@@ -1,0 +1,203 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Renderer">
+      <UniqueIdentifier>{a3c2eeb5-a708-43e2-974c-af7d63fca395}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{7a974dbf-6670-4b20-b964-a23b04b6eb46}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty">
+      <UniqueIdentifier>{6be586f2-42d8-4160-bac8-029fa5df6576}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\imgui">
+      <UniqueIdentifier>{6268ee0e-d1ba-4ddc-b6ad-0d7d885d1461}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\DirectXTex">
+      <UniqueIdentifier>{1dad02ee-d28c-4b7e-80cc-658dda0c97f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\DirectXTK">
+      <UniqueIdentifier>{495a26ef-1413-4b86-b310-0c205b100346}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\DirectXTex\ScreenGrab">
+      <UniqueIdentifier>{e28d2d1e-a420-4825-bb39-97d85b644048}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\DirectXTex\WICTextureLoader">
+      <UniqueIdentifier>{f7879419-929b-4178-b919-8f40324839e3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\DirectXTex\DDSTextureLoader">
+      <UniqueIdentifier>{9963237f-8990-4ed6-ae8b-d53a051ba0cf}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="EffectsRendering.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Camera.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\CascadedMatrixSet.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\D3DRendererApp.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\DemoTimer.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\GBuffer.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\GeometryGenerator.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\LightManager.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Mesh.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\ObjLoader.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\SceneManager.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\TextureManager.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdParty\imgui\imgui.cpp">
+      <Filter>3rdParty\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdParty\imgui\imgui_impl_dx11.cpp">
+      <Filter>3rdParty\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdParty\DirectXTK\SimpleMath.cpp">
+      <Filter>3rdParty\DirectXTK</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdParty\DirectXTex\WICTextureLoader\WICTextureLoader.cpp">
+      <Filter>3rdParty\DirectXTex\WICTextureLoader</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdParty\DirectXTex\ScreenGrab\ScreenGrab.cpp">
+      <Filter>3rdParty\DirectXTex\ScreenGrab</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdParty\imgui\imgui_draw.cpp">
+      <Filter>3rdParty\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Sky.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdParty\DirectXTex\DDSTextureLoader\DDSTextureLoader.cpp">
+      <Filter>3rdParty\DirectXTex\DDSTextureLoader</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Renderer\Camera.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\CascadedMatrixSet.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\D3DRendererApp.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\DemoTimer.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\GBuffer.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\GeometryGenerator.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\LightManager.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Mesh.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\ObjLoader.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\SceneManager.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\TextureManager.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Util.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdParty\tiny_obj_loader.h">
+      <Filter>3rdParty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdParty\imgui\imgui.h">
+      <Filter>3rdParty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdParty\imgui\imgui_impl_dx11.h">
+      <Filter>3rdParty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdParty\DirectXTK\pch.h">
+      <Filter>3rdParty\DirectXTK</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdParty\DirectXTK\SimpleMath.h">
+      <Filter>3rdParty\DirectXTK</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdParty\DirectXTex\WICTextureLoader\WICTextureLoader.h">
+      <Filter>3rdParty\DirectXTex\WICTextureLoader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdParty\DirectXTex\ScreenGrab\ScreenGrab.h">
+      <Filter>3rdParty\DirectXTex\ScreenGrab</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Sky.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdParty\DirectXTex\DDSTextureLoader\DDSTextureLoader.h">
+      <Filter>3rdParty\DirectXTex\DDSTextureLoader</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Common.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\DeferredShading.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\PointLight.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\ShadowGen.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\ShadowMapVisualize.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\SpotLight.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\3rdParty\DirectXTK\SimpleMath.inl">
+      <Filter>3rdParty\DirectXTK</Filter>
+    </None>
+    <None Include="Shaders\DirectionalLight.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\GBufferVisualize.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Sky.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+  </ItemGroup>
+</Project>
