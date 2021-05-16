@@ -1082,7 +1082,8 @@ void LightManager::SpotShadowGen(ID3D11DeviceContext* pd3dImmediateContext, cons
 	// Prepare the projection to shadow space
 	XMMATRIX matSpotView;
 	XMVECTOR vLookAt = XMLoadFloat3(&light.vPosition) + XMLoadFloat3(&light.vDirection) * light.fRange;
-	XMVECTOR u1 = XMLoadFloat3(&XMFLOAT3(0.0f, 0.0f, light.vDirection.y));
+	XMFLOAT3 lightY = XMFLOAT3(0.0f, 0.0f, light.vDirection.y);
+	XMVECTOR u1 = XMLoadFloat3(&lightY);
 	XMFLOAT3 a = XMFLOAT3(0.0f, 1.0f, 0.0f);
 	XMVECTOR u2 = XMLoadFloat3(&a);
 	XMVECTOR vUp = (light.vDirection.y > 0.9 || light.vDirection.y < -0.9) ? u1 : u2;
@@ -1100,7 +1101,8 @@ void LightManager::SpotShadowGen(ID3D11DeviceContext* pd3dImmediateContext, cons
 	V(pd3dImmediateContext->Map(mSpotShadowGenVertexCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource));
 	XMMATRIX * shadowGenMat = (XMMATRIX*)MappedResource.pData;
 	XMMATRIX toShadow = matSpotView * matSpotProj;
-	shadowGenMat = &XMMatrixTranspose(toShadow);
+	XMMATRIX toShadowTranspose = XMMatrixTranspose(toShadow);
+	shadowGenMat = &toShadowTranspose;
 	pd3dImmediateContext->Unmap(mSpotShadowGenVertexCB, 0);
 	pd3dImmediateContext->VSSetConstantBuffers(0, 1, &mSpotShadowGenVertexCB);
 

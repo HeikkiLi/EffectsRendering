@@ -46,6 +46,7 @@ IMPLEMENTED
 #include "Renderer/GBuffer.h"
 #include "Renderer/SceneManager.h"
 #include "Renderer/LightManager.h"
+#include "Renderer/PostFX.h"
 #include "Renderer/Util.h"
 
 enum RENDER_STATE { BACKBUFFERRT, DEPTHRT, COLSPECRT, NORMALRT, SPECPOWRT };
@@ -111,6 +112,20 @@ private:
 	bool mShowShadowMap;
 
 	RENDER_STATE mRenderState;
+
+	// PostFX
+	PostFX	mPostFX;
+	bool	mEnablePostFX;
+
+	// HDR light accumulation buffer
+	ID3D11Texture2D*			mHDRTexture = NULL;
+	ID3D11RenderTargetView*		mHDRRTV = NULL;
+	ID3D11ShaderResourceView*	mHDRSRV = NULL;
+
+	float	mMiddleGreyMax = 6.0;
+	float	mMiddleGrey = 0.863f;
+	float	mWhiteMax = 6.0f;
+	float	mWhite = 1.53f;
 };
 
 
@@ -151,6 +166,7 @@ DeferredShaderApp::DeferredShaderApp(HINSTANCE hInstance)
 	mDirCastShadows = true;
 	mAntiFlickerOn = true;
 	mVisualizeCascades = false;
+	mEnablePostFX = true;
 
 	mRenderState = RENDER_STATE::BACKBUFFERRT;
 }
@@ -171,9 +187,14 @@ DeferredShaderApp::~DeferredShaderApp()
 	SAFE_RELEASE(mTextureVisNormalPS);
 	SAFE_RELEASE(mTextureVisSpecPowPS);
 
+	SAFE_RELEASE(mHDRTexture)
+	SAFE_RELEASE(mHDRRTV);
+	SAFE_RELEASE(mHDRSRV);
+
 	mSceneManager.Release();
 	mLightManager.Release();
 	mGBuffer.Release();
+	mPostFX.Release();
 }
 
 bool DeferredShaderApp::Init()
@@ -314,6 +335,48 @@ void DeferredShaderApp::OnResize()
 {
 	D3DRendererApp::OnResize();
 
+	// Release the old HDR resources if still around
+	SAFE_RELEASE(mHDRTexture);
+	SAFE_RELEASE(mHDRRTV);
+	SAFE_RELEASE(mHDRSRV);
+
+	// Create the HDR render target
+	D3D11_TEXTURE2D_DESC dtd = {
+		mClientWidth, //UINT Width;
+		mClientHeight, //UINT Height;
+		1, //UINT MipLevels;
+		1, //UINT ArraySize;
+		DXGI_FORMAT_R16G16B16A16_TYPELESS, //DXGI_FORMAT Format;
+		1, //DXGI_SAMPLE_DESC SampleDesc;
+		0,
+		D3D11_USAGE_DEFAULT,//D3D11_USAGE Usage;
+		D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,//UINT BindFlags;
+		0,//UINT CPUAccessFlags;
+		0//UINT MiscFlags;    
+	};
+	md3dDevice->CreateTexture2D(&dtd, NULL, &mHDRTexture);
+	DX_SetDebugName(mHDRTexture, "HDR Light Accumulation Texture");
+
+	D3D11_RENDER_TARGET_VIEW_DESC rtsvd =
+	{
+		DXGI_FORMAT_R16G16B16A16_FLOAT,
+		D3D11_RTV_DIMENSION_TEXTURE2D
+	};
+	md3dDevice->CreateRenderTargetView(mHDRTexture, &rtsvd, &mHDRRTV);
+	DX_SetDebugName(g_HDRRTV, "HDR Light Accumulation RTV");
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC dsrvd =
+	{
+		DXGI_FORMAT_R16G16B16A16_FLOAT,
+		D3D11_SRV_DIMENSION_TEXTURE2D,
+		0,
+		0
+	};
+	dsrvd.Texture2D.MipLevels = 1;
+	md3dDevice->CreateShaderResourceView(mHDRTexture, &dsrvd, &mHDRSRV);
+	DX_SetDebugName(mHDRSRV, "HDR Light Accumulation SRV");
+
+
 	// Recreate the GBuffer with the new size
 	mGBuffer.Init(md3dDevice, mClientWidth, mClientHeight);
 
@@ -321,7 +384,8 @@ void DeferredShaderApp::OnResize()
 	mCamera->SetLens(0.25f*M_PI, AspectRatio(), 0.1f, 500.0f);
 	mCamera->UpdateViewMatrix();
 
-
+	// init PostFX with new resized backbuffer info
+	mPostFX.Init(md3dDevice, mClientWidth, mClientHeight);
 }
 
 void DeferredShaderApp::Update(float dt)
@@ -368,6 +432,8 @@ void DeferredShaderApp::Update(float dt)
 		mRenderState = RENDER_STATE::SPECPOWRT;
 
 	mLightManager.ClearLights();
+
+	mPostFX.SetParameters(mMiddleGrey, mWhite);
 
 }
 
@@ -428,6 +494,13 @@ void DeferredShaderApp::Render()
 
 	// Render the sky
 	//mSceneManager.RenderSky(md3dImmediateContext, mDirLightDir, 2.0f * mDirLightColor);
+
+	if (mEnablePostFX)
+	{
+		// Do post processing into the LDR render target
+		mPostFX.PostProcessing(md3dImmediateContext, mHDRSRV, mRenderTargetView);
+		md3dImmediateContext->OMSetRenderTargets(1, &mRenderTargetView, mGBuffer.GetDepthDSV());
+	}
 
 	// Add the light sources wireframe on top of the LDR target
 	if (mVisualizeLightVolume)

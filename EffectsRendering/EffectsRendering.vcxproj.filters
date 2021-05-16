@@ -102,6 +102,9 @@
     <ClCompile Include="..\3rdParty\DirectXTex\DDSTextureLoader\DDSTextureLoader.cpp">
       <Filter>3rdParty\DirectXTex\DDSTextureLoader</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\PostFX.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderer\Camera.h">
@@ -167,6 +170,9 @@
     <ClInclude Include="..\3rdParty\DirectXTex\DDSTextureLoader\DDSTextureLoader.h">
       <Filter>3rdParty\DirectXTex\DDSTextureLoader</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\PostFX.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Common.hlsl">
@@ -197,6 +203,12 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\Sky.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\PostDownScaleFX.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\PostFX.hlsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

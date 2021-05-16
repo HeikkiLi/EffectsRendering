@@ -47,7 +47,9 @@ bool CascadedMatrixSet::Init(int iShadowMapSize, Camera* cam)
 void CascadedMatrixSet::Update(const XMVECTOR& directionalDir)
 {
 	// Find the view matrix
-	XMVECTOR vWorldCenter = XMLoadFloat3(&mCamera->GetPosition()) + XMLoadFloat3(&mCamera->GetLook()) * (mCascadeTotalRange * 0.5f);
+	XMFLOAT3 camPos = mCamera->GetPosition();
+	XMFLOAT3 camLook = mCamera->GetLook();
+	XMVECTOR vWorldCenter = XMLoadFloat3(&camPos) + XMLoadFloat3(&camLook) * (mCascadeTotalRange * 0.5f);
 	XMVECTOR vPos = vWorldCenter;
 	XMVECTOR vLookAt = vWorldCenter + directionalDir * mCamera->GetFarZ();
 	

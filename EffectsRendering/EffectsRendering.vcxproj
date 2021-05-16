@@ -161,6 +161,7 @@
     <ClCompile Include="..\3rdParty\imgui\imgui.cpp" />
     <ClCompile Include="..\3rdParty\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\3rdParty\imgui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="Renderer\PostFX.cpp" />
     <ClCompile Include="Renderer\Sky.cpp" />
     <ClCompile Include="EffectsRendering.cpp">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -198,6 +199,7 @@
     <ClInclude Include="Renderer\LightManager.h" />
     <ClInclude Include="Renderer\Mesh.h" />
     <ClInclude Include="Renderer\ObjLoader.h" />
+    <ClInclude Include="Renderer\PostFX.h" />
     <ClInclude Include="Renderer\SceneManager.h" />
     <ClInclude Include="Renderer\Sky.h" />
     <ClInclude Include="Renderer\TextureManager.h" />
@@ -236,6 +238,14 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\PostDownScaleFX.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Shaders\PostFX.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
