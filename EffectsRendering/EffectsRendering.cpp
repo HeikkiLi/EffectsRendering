@@ -123,9 +123,9 @@ private:
 	ID3D11ShaderResourceView*	mHDRSRV = NULL;
 
 	float	mMiddleGreyMax = 6.0;
-	float	mMiddleGrey = 0.863f;
+	float	mMiddleGrey = 0.863f * mMiddleGreyMax + 0.000001f;
 	float	mWhiteMax = 6.0f;
-	float	mWhite = 1.53f;
+	float	mWhite = 1.53f * mWhiteMax + 0.00001f;
 };
 
 
@@ -466,7 +466,7 @@ void DeferredShaderApp::Render()
 
 	// clear render target view
 	float clearColor[4] = { 0.0, 0.0, 0.0, 0.0 };
-	md3dImmediateContext->ClearRenderTargetView(mRenderTargetView, clearColor);
+	md3dImmediateContext->ClearRenderTargetView(mEnablePostFX ? mHDRRTV : mRenderTargetView, clearColor);
 
 	// clear depth stencil view
 	md3dImmediateContext->ClearDepthStencilView(mDepthStencilView, D3D11_CLEAR_DEPTH, 1.0, 0);
@@ -486,7 +486,7 @@ void DeferredShaderApp::Render()
 	mGBuffer.PostRender(md3dImmediateContext);
 
 	// set render target
-	md3dImmediateContext->OMSetRenderTargets(1, &mRenderTargetView, mGBuffer.GetDepthReadOnlyDSV());
+	md3dImmediateContext->OMSetRenderTargets(1, mEnablePostFX ? &mHDRRTV : &mRenderTargetView, mGBuffer.GetDepthReadOnlyDSV());
 	mGBuffer.PrepareForUnpack(md3dImmediateContext, mCamera);
 	
 	// do lighting
@@ -587,10 +587,12 @@ void DeferredShaderApp::OnMouseMove(WPARAM btnState, int x, int y)
 		XMVECTOR pDeterminant;
 		XMFLOAT4X4 matViewInv;
 		XMStoreFloat4x4(&matViewInv, XMMatrixInverse(&pDeterminant, mCamera->View()));
-
-		XMVECTOR right = XMLoadFloat3( &XMFLOAT3(matViewInv._11, matViewInv._12, matViewInv._13));
-		XMVECTOR up = XMLoadFloat3( &XMFLOAT3(matViewInv._21, matViewInv._22, matViewInv._23));
-		XMVECTOR forward = XMLoadFloat3( &XMFLOAT3(matViewInv._31, matViewInv._32, matViewInv._33));
+		XMFLOAT3 mwiRight = XMFLOAT3(matViewInv._11, matViewInv._12, matViewInv._13);
+		XMVECTOR right = XMLoadFloat3( &mwiRight);
+		XMFLOAT3 mwiUp = XMFLOAT3(matViewInv._21, matViewInv._22, matViewInv._23);
+		XMVECTOR up = XMLoadFloat3( &mwiUp);
+		XMFLOAT3 mwiFo = XMFLOAT3(matViewInv._31, matViewInv._32, matViewInv._33);
+		XMVECTOR forward = XMLoadFloat3( &mwiFo);
 
 		mDirLightDir -= right * fDX;
 		mDirLightDir -= up * fDY;
@@ -699,7 +701,8 @@ void DeferredShaderApp::RenderGUI()
 			ImGui::Text("Color:");
 			static ImVec4 color = ImColor(mDirLightColor.m128_f32[0], mDirLightColor.m128_f32[1], mDirLightColor.m128_f32[2]);
 			ImGui::ColorEdit3("DirLightColor##dcol1", (float*)&color, ImGuiColorEditFlags_NoLabel);
-			mDirLightColor = XMLoadFloat3(&XMFLOAT3((float*)&color));
+			XMFLOAT3 color3 = XMFLOAT3((float*)&color);
+			mDirLightColor = XMLoadFloat3(&color3);
 			ImGui::Checkbox("Shadows##dirshadow", &mDirCastShadows); 
 			ImGui::Checkbox("Visualize Cascades##visCascades", &mVisualizeCascades);
 			
@@ -737,6 +740,11 @@ void DeferredShaderApp::RenderGUI()
 			ImGui::TextWrapped("MMB rotate sun direction");
 
 			ImGui::Checkbox("Use NormalMap", &g_useNormalMap);
+
+			if (ImGui::CollapsingHeader("Post Effects"))
+			{
+				ImGui::Checkbox("Enable Post Effects", &mEnablePostFX);
+			}
 
 			ImGui::End();
 		}
