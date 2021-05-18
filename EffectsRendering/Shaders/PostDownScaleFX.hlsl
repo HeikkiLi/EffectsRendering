@@ -1,5 +1,6 @@
 Texture2D HDRTex : register(t0);
 StructuredBuffer<float> AverageValues1D : register(t0);
+StructuredBuffer<float> PrevAvgLum : register(t1);
 
 RWStructuredBuffer<float> AverageLum : register(u0);
 
@@ -8,6 +9,7 @@ cbuffer DownScaleConstants : register(b0)
 	uint2 Res		 : packoffset(c0);   // Resulotion of the qurter size target: x - width, y - height
 	uint Domain		 : packoffset(c0.z); // Total pixel in the downscaled image
 	uint GroupSize	 : packoffset(c0.w); // Number of groups dispached on the first pass
+	float Adaptation : packoffset(c1);   // Adaptation factor
 }
 
 // Group shared memory to store the intermediate results
@@ -172,8 +174,11 @@ void DownScaleSecondPass(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_Gr
 		finalLumValue += dispatchThreadId.x + 48 < GroupSize ? SharedAvgFinal[dispatchThreadId.x + 48] : avgLum;
 		finalLumValue /= 64.0;
 
+		// Calculate the adaptive luminance
+		float adaptedAverageLum = lerp(PrevAvgLum[0], finalLumValue, Adaptation);
+
 		// Store the final value
-		AverageLum[0] = max(finalLumValue, 0.0001);
+		AverageLum[0] = max(adaptedAverageLum, 0.0001);
 
 	}
 }

@@ -5,6 +5,7 @@ PostFX::PostFX() : mMiddleGrey(0.0025f), mWhite(1.5f),
 	mDownScale1DBuffer(NULL), mDownScale1DUAV(NULL), mDownScale1DSRV(NULL),
 	mDownScaleCB(NULL), mFinalPassCB(NULL),
 	mAvgLumBuffer(NULL), mAvgLumUAV(NULL), mAvgLumSRV(NULL),
+	mPrevAvgLumBuffer(NULL), mPrevAvgLumUAV(NULL), mPrevAvgLumSRV(NULL),
 	mDownScaleFirstPassCS(NULL), mDownScaleSecondPassCS(NULL), mFullScreenQuadVS(NULL),
 	mFinalPassPS(NULL), mSampPoint(NULL)
 {
@@ -61,13 +62,23 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mAvgLumBuffer));
 	DX_SetDebugName(mAvgLumBuffer, "PostFX - Average Luminance Buffer");
 
+	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mPrevAvgLumBuffer));
+	DX_SetDebugName(mPrevAvgLumBuffer, "PostFX - Previous Average Luminance Buffer");
+
 	DescUAV.Buffer.NumElements = 1;
 	V_RETURN(device->CreateUnorderedAccessView(mAvgLumBuffer, &DescUAV, &mAvgLumUAV));
 	DX_SetDebugName(mAvgLumUAV, "PostFX - Average Luminance UAV");
 
+	V_RETURN(device->CreateUnorderedAccessView(mPrevAvgLumBuffer, &DescUAV, &mPrevAvgLumUAV));
+	DX_SetDebugName(mPrevAvgLumUAV, "PostFX - Previous Average Luminance UAV");
+
 	dsrvd.Buffer.NumElements = 1;
 	V_RETURN(device->CreateShaderResourceView(mAvgLumBuffer, &dsrvd, &mAvgLumSRV));
 	DX_SetDebugName(mAvgLumSRV, "PostFX - Average Luminance SRV");
+
+	V_RETURN(device->CreateShaderResourceView(mPrevAvgLumBuffer, &dsrvd, &mPrevAvgLumSRV));
+	DX_SetDebugName(mPrevAvgLumSRV, "PostFX - Previous Average Luminance SRV");
+
 
 	ZeroMemory(&bufferDesc, sizeof(bufferDesc));
 	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
@@ -142,6 +153,9 @@ void PostFX::Release()
 	SAFE_RELEASE(mAvgLumBuffer);
 	SAFE_RELEASE(mAvgLumUAV);
 	SAFE_RELEASE(mAvgLumSRV);
+	SAFE_RELEASE(mPrevAvgLumBuffer);
+	SAFE_RELEASE(mPrevAvgLumUAV);
+	SAFE_RELEASE(mPrevAvgLumSRV);
 	SAFE_RELEASE(mDownScaleFirstPassCS);
 	SAFE_RELEASE(mDownScaleSecondPassCS);
 	SAFE_RELEASE(mFullScreenQuadVS);
@@ -160,6 +174,17 @@ void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11Sha
 	rt[0] = pLDRRTV;
 	pd3dImmediateContext->OMSetRenderTargets(1, rt, NULL);
 	FinalPass(pd3dImmediateContext, pHDRSRV);
+
+	// Swap the previous frame average luminance
+	ID3D11Buffer* tempBuffer = mAvgLumBuffer;
+	ID3D11UnorderedAccessView* tempUAV = mAvgLumUAV;
+	ID3D11ShaderResourceView* tempSRV = mAvgLumSRV;
+	mAvgLumBuffer = mPrevAvgLumBuffer;
+	mAvgLumUAV = mPrevAvgLumUAV;
+	mAvgLumSRV = mPrevAvgLumSRV;
+	mPrevAvgLumBuffer = tempBuffer;
+	mPrevAvgLumUAV = tempUAV;
+	mPrevAvgLumSRV = tempSRV;
 }
 
 void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV)
@@ -169,7 +194,7 @@ void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, (UINT*)(&arrUAVs));
 
 	// Input
-	ID3D11ShaderResourceView* arrViews[1] = { pHDRSRV };
+	ID3D11ShaderResourceView* arrViews[2] = { pHDRSRV, NULL };
 	pd3dImmediateContext->CSSetShaderResources(0, 1, arrViews);
 
 	// Constants
@@ -180,6 +205,7 @@ void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 	pDownScale->height = mHeight / 4;
 	pDownScale->totalPixels = pDownScale->width * pDownScale->height;
 	pDownScale->groupSize = mDownScaleGroups;
+	pDownScale->adaptation = mAdaptation;
 	pd3dImmediateContext->Unmap(mDownScaleCB, 0);
 	ID3D11Buffer* arrConstBuffers[1] = { mDownScaleCB };
 	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
@@ -202,7 +228,8 @@ void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 
 	// Input
 	arrViews[0] = mDownScale1DSRV;
-	pd3dImmediateContext->CSSetShaderResources(0, 1, arrViews);
+	arrViews[1] = mPrevAvgLumSRV;
+	pd3dImmediateContext->CSSetShaderResources(0, 2, arrViews);
 
 	// Constants
 	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
@@ -218,7 +245,7 @@ void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 	ZeroMemory(arrConstBuffers, sizeof(arrConstBuffers));
 	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
 	ZeroMemory(arrViews, sizeof(arrViews));
-	pd3dImmediateContext->CSSetShaderResources(0, 1, arrViews);
+	pd3dImmediateContext->CSSetShaderResources(0, 2, arrViews);
 	ZeroMemory(arrUAVs, sizeof(arrUAVs));
 	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, (UINT*)(&arrUAVs));
 }

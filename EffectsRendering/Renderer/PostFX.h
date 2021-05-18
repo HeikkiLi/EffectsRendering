@@ -14,7 +14,7 @@ public:
 	// do post processing
 	void PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11RenderTargetView* pLDRRTV);
 	
-	void SetParameters(float middleGrey, float white) { mMiddleGrey = middleGrey; mWhite = white; }
+	void SetParameters(float middleGrey, float white, float adaptation) { mMiddleGrey = middleGrey; mWhite = white; mAdaptation = adaptation; }
 
 private:
 
@@ -34,11 +34,17 @@ private:
 	ID3D11UnorderedAccessView* mAvgLumUAV;
 	ID3D11ShaderResourceView* mAvgLumSRV;
 
+	// Previous average luminance used for calculate adaptation
+	ID3D11Buffer* mPrevAvgLumBuffer;
+	ID3D11UnorderedAccessView* mPrevAvgLumUAV;
+	ID3D11ShaderResourceView* mPrevAvgLumSRV;
+
 	UINT	mWidth;
 	UINT	mHeight;
 	UINT	mDownScaleGroups;
 	float	mMiddleGrey;
 	float	mWhite;
+	float	mAdaptation;
 
 	typedef struct
 	{
@@ -46,6 +52,8 @@ private:
 		UINT height;
 		UINT totalPixels;
 		UINT groupSize;
+		float adaptation;
+		UINT pad[3];
 	} TDownScaleCB;
 	ID3D11Buffer* mDownScaleCB;
 
