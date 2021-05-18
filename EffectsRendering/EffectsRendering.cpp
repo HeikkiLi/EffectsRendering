@@ -123,9 +123,9 @@ private:
 	ID3D11ShaderResourceView*	mHDRSRV = NULL;
 
 	float	mMiddleGreyMax = 6.0;
-	float	mMiddleGrey = 0.863f * mMiddleGreyMax + 0.000001f;
+	float	mMiddleGrey = 0.863f;
 	float	mWhiteMax = 6.0f;
-	float	mWhite = 1.53f * mWhiteMax + 0.00001f;
+	float	mWhite = 1.53f ;
 };
 
 
@@ -706,18 +706,6 @@ void DeferredShaderApp::RenderGUI()
 			ImGui::Checkbox("Shadows##dirshadow", &mDirCastShadows); 
 			ImGui::Checkbox("Visualize Cascades##visCascades", &mVisualizeCascades);
 			
-			ImGui::Text("Material");
-			Mesh* mesh = mSceneManager.GetMesh(0);
-			Material mat = mesh->mMaterials[0];
-			
-			XMFLOAT4 diffuse = mat.Diffuse;
-			static ImVec4 difcolor = ImColor(diffuse.x, diffuse.y, diffuse.z);
-			ImGui::ColorEdit3("Diffuse Color##matcol1", (float*)& difcolor, ImGuiColorEditFlags_NoLabel);
-			mat.Diffuse = XMFLOAT4((float*)& difcolor);
-			ImGui::SliderFloat("SpecExp", &mat.specExp, 0.1f, 100.0f, "%.3f");
-			ImGui::SliderFloat("SpecInt", &mat.specIntensivity, 0.1f, 100.0f, "%.3f");	
-			mesh->mMaterials[0] = mat;
-
 			if (ImGui::CollapsingHeader("Camera"))
 			{
 				float campos[3] = { mCamera->GetPosition().x, mCamera->GetPosition().y, mCamera->GetPosition().z };
@@ -741,9 +729,17 @@ void DeferredShaderApp::RenderGUI()
 
 			ImGui::Checkbox("Use NormalMap", &g_useNormalMap);
 
-			if (ImGui::CollapsingHeader("Post Effects"))
+			if (ImGui::CollapsingHeader("Post Effects", ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				ImGui::Checkbox("Enable Post Effects", &mEnablePostFX);
+
+				int iwhite = (int)((mWhite/mWhiteMax) * 255.0f);
+				ImGui::SliderInt("White", &iwhite, 0, 255, "%1f");
+				mWhite = (iwhite / 255.0f) * mWhiteMax + 0.00001f;
+
+				int imiddleGrey = (int)((mMiddleGrey / mMiddleGreyMax) * 255.0f);
+				ImGui::SliderInt("MiddleGrey", &imiddleGrey, 0, 255, "%1f");
+				mMiddleGrey = (imiddleGrey / 255.0f)  * mMiddleGreyMax + 0.000001f;
 			}
 
 			ImGui::End();
