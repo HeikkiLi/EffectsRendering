@@ -1,15 +1,23 @@
 #include "PostFX.h"
 
 
-PostFX::PostFX() : mMiddleGrey(0.0025f), mWhite(1.5f),
+PostFX::PostFX() : mMiddleGrey(0.0025f), mWhite(1.5f), mBloomThreshold(2.0), mBloomScale(0.1f),
+	mDownScaleRT(NULL), mDownScaleSRV(NULL), mDownScaleUAV(NULL),
+	mBloomRT(NULL), mBloomSRV(NULL), mBloomUAV(NULL),
 	mDownScale1DBuffer(NULL), mDownScale1DUAV(NULL), mDownScale1DSRV(NULL),
-	mDownScaleCB(NULL), mFinalPassCB(NULL),
+	mDownScaleCB(NULL), mFinalPassCB(NULL), mBlurCB(NULL),
 	mAvgLumBuffer(NULL), mAvgLumUAV(NULL), mAvgLumSRV(NULL),
 	mPrevAvgLumBuffer(NULL), mPrevAvgLumUAV(NULL), mPrevAvgLumSRV(NULL),
 	mDownScaleFirstPassCS(NULL), mDownScaleSecondPassCS(NULL), mFullScreenQuadVS(NULL),
-	mFinalPassPS(NULL), mSampPoint(NULL)
+	mFinalPassPS(NULL), mSampPoint(NULL), mBloomRevealCS(NULL),
+	mHorizontalBlurCS(NULL), mVerticalBlurCS(NULL)
 {
-
+	mTempRT[0] = NULL;
+	mTempRT[1] = NULL;
+	mTempSRV[0] = NULL;
+	mTempSRV[1] = NULL;
+	mTempUAV[0] = NULL;
+	mTempUAV[1] = NULL;
 }
 
 PostFX::~PostFX()
@@ -145,11 +153,24 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 
 void PostFX::Release()
 {
+	SAFE_RELEASE(mDownScaleRT);
+	SAFE_RELEASE(mDownScaleSRV);
+	SAFE_RELEASE(mDownScaleUAV);
+	SAFE_RELEASE(mTempRT[0]);
+	SAFE_RELEASE(mTempSRV[0]);
+	SAFE_RELEASE(mTempUAV[0]);
+	SAFE_RELEASE(mTempRT[1]);
+	SAFE_RELEASE(mTempSRV[1]);
+	SAFE_RELEASE(mTempUAV[1]);
+	SAFE_RELEASE(mBloomRT);
+	SAFE_RELEASE(mBloomSRV);
+	SAFE_RELEASE(mBloomUAV);
 	SAFE_RELEASE(mDownScale1DBuffer);
 	SAFE_RELEASE(mDownScale1DUAV);
 	SAFE_RELEASE(mDownScale1DSRV);
 	SAFE_RELEASE(mDownScaleCB);
 	SAFE_RELEASE(mFinalPassCB);
+	SAFE_RELEASE(mBlurCB);
 	SAFE_RELEASE(mAvgLumBuffer);
 	SAFE_RELEASE(mAvgLumUAV);
 	SAFE_RELEASE(mAvgLumSRV);
@@ -160,6 +181,9 @@ void PostFX::Release()
 	SAFE_RELEASE(mDownScaleSecondPassCS);
 	SAFE_RELEASE(mFullScreenQuadVS);
 	SAFE_RELEASE(mFinalPassPS);
+	SAFE_RELEASE(mBloomRevealCS);
+	SAFE_RELEASE(mHorizontalBlurCS);
+	SAFE_RELEASE(mVerticalBlurCS);
 	SAFE_RELEASE(mSampPoint);
 }
 
@@ -185,6 +209,15 @@ void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11Sha
 	mPrevAvgLumBuffer = tempBuffer;
 	mPrevAvgLumUAV = tempUAV;
 	mPrevAvgLumSRV = tempSRV;
+}
+
+void PostFX::SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale)
+{
+	mMiddleGrey = middleGrey;
+	mWhite = white; 
+	mAdaptation = adaptation;
+	mBloomThreshold = bloomThreshold;
+	mBloomScale = bloomScale;
 }
 
 void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV)
@@ -222,7 +255,7 @@ void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 	///////////////////////////////////////////////
 
 	// Output
-	ZeroMemory(arrUAVs, sizeof(arrUAVs));
+	//ZeroMemory(arrUAVs, sizeof(arrUAVs));
 	arrUAVs[0] = mAvgLumUAV;
 	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, (UINT*)(&arrUAVs));
 
@@ -248,6 +281,14 @@ void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 	pd3dImmediateContext->CSSetShaderResources(0, 2, arrViews);
 	ZeroMemory(arrUAVs, sizeof(arrUAVs));
 	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, (UINT*)(&arrUAVs));
+}
+
+void PostFX::Bloom(ID3D11DeviceContext* pd3dImmediateContext)
+{
+}
+
+void PostFX::Blur(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pInput, ID3D11UnorderedAccessView* pOutput)
+{
 }
 
 void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV)

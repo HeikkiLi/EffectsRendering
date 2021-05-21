@@ -14,15 +14,36 @@ public:
 	// do post processing
 	void PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11RenderTargetView* pLDRRTV);
 	
-	void SetParameters(float middleGrey, float white, float adaptation) { mMiddleGrey = middleGrey; mWhite = white; mAdaptation = adaptation; }
+	void SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale);
 
 private:
 
 	// Downscale HDR image
 	void DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV);
 
+	// Extract the bloom values from the downscaled image
+	void Bloom(ID3D11DeviceContext* pd3dImmediateContext);
+
+	// Apply a gaussian blur to the input and store it in the output
+	void Blur(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pInput, ID3D11UnorderedAccessView* pOutput);
+
 	// Final pass composite all post processing calculations
 	void FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV);
+
+	// Downscaled scene texture
+	ID3D11Texture2D* mDownScaleRT;
+	ID3D11ShaderResourceView* mDownScaleSRV;
+	ID3D11UnorderedAccessView* mDownScaleUAV;
+
+	// Temporary texture
+	ID3D11Texture2D* mTempRT[2];
+	ID3D11ShaderResourceView* mTempSRV[2];
+	ID3D11UnorderedAccessView* mTempUAV[2];
+
+	// Bloom texture
+	ID3D11Texture2D* mBloomRT;
+	ID3D11ShaderResourceView* mBloomSRV;
+	ID3D11UnorderedAccessView* mBloomUAV;
 
 	// 1D intermediate storage for the down scale operation
 	ID3D11Buffer* mDownScale1DBuffer;
@@ -45,6 +66,8 @@ private:
 	float	mMiddleGrey;
 	float	mWhite;
 	float	mAdaptation;
+	float	mBloomThreshold;
+	float	mBloomScale;
 
 	typedef struct
 	{
@@ -53,7 +76,8 @@ private:
 		UINT totalPixels;
 		UINT groupSize;
 		float adaptation;
-		UINT pad[3];
+		float bloomThreshold;
+		UINT pad[2];
 	} TDownScaleCB;
 	ID3D11Buffer* mDownScaleCB;
 
@@ -61,15 +85,30 @@ private:
 	{
 		float MiddleGrey;
 		float LumWhiteSqr;
-		UINT pad[2];
+		float BloomScale;
+		UINT pad;
 	} TFinalPassCB;
 	ID3D11Buffer* mFinalPassCB;
+
+	typedef struct
+	{
+		UINT numApproxPasses;
+		float halfBoxFilterWidth;			// w/2
+		float fracHalfBoxFilterWidth;		// frac(w/2+0.5)
+		float invFracHalfBoxFilterWidth;	// 1-frac(w/2+0.5)
+		float rcpBoxFilterWidth;			// 1/w
+		UINT pad[3];
+	} TBlurCB;
+	ID3D11Buffer* mBlurCB;
 
 	ID3D11SamplerState* mSampPoint;
 
 	// Shaders
 	ID3D11ComputeShader*	mDownScaleFirstPassCS;
 	ID3D11ComputeShader*	mDownScaleSecondPassCS;
+	ID3D11ComputeShader*	mBloomRevealCS;
+	ID3D11ComputeShader*	mHorizontalBlurCS;
+	ID3D11ComputeShader*	mVerticalBlurCS;
 	ID3D11VertexShader*		mFullScreenQuadVS;
 	ID3D11PixelShader*		mFinalPassPS;
 };

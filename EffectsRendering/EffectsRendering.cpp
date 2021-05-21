@@ -21,14 +21,13 @@
 IMPLEMENTED
 	- diffuse texture
 	- normal maps,  normal texture
-
+	- HDR, tonemapping and adaptation
 */
 
 
 /// TODO
 /*
 
-	- HDR 
 	- SSAO - Screen Space Ambient Occlusion
 	- skybox/sphere hdr texture map?
 	- skybox rotation bug
