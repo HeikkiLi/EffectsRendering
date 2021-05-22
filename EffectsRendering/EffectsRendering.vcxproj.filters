@@ -211,5 +211,8 @@
     <None Include="Shaders\PostFX.hlsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\Blur.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

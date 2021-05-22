@@ -12,7 +12,7 @@ public:
 	void Release();
 
 	// do post processing
-	void PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11RenderTargetView* pLDRRTV);
+	void PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11RenderTargetView* pLDRRTV, bool enableBloom);
 	
 	void SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale);
 
@@ -102,6 +102,7 @@ private:
 	ID3D11Buffer* mBlurCB;
 
 	ID3D11SamplerState* mSampPoint;
+	ID3D11SamplerState* mSampLinear;
 
 	// Shaders
 	ID3D11ComputeShader*	mDownScaleFirstPassCS;

@@ -10,7 +10,7 @@ PostFX::PostFX() : mMiddleGrey(0.0025f), mWhite(1.5f), mBloomThreshold(2.0), mBl
 	mPrevAvgLumBuffer(NULL), mPrevAvgLumUAV(NULL), mPrevAvgLumSRV(NULL),
 	mDownScaleFirstPassCS(NULL), mDownScaleSecondPassCS(NULL), mFullScreenQuadVS(NULL),
 	mFinalPassPS(NULL), mSampPoint(NULL), mBloomRevealCS(NULL),
-	mHorizontalBlurCS(NULL), mVerticalBlurCS(NULL)
+	mHorizontalBlurCS(NULL), mVerticalBlurCS(NULL), mSampLinear(NULL)
 {
 	mTempRT[0] = NULL;
 	mTempRT[1] = NULL;
@@ -117,7 +117,6 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mDownScale1DBuffer));
 	DX_SetDebugName(mDownScale1DBuffer, "PostFX - Luminance Down Scale 1D Buffer");
 
-	D3D11_UNORDERED_ACCESS_VIEW_DESC DescUAV;
 	ZeroMemory(&DescUAV, sizeof(D3D11_UNORDERED_ACCESS_VIEW_DESC));
 	DescUAV.Format = DXGI_FORMAT_UNKNOWN;
 	DescUAV.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
@@ -125,8 +124,6 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	V_RETURN(device->CreateUnorderedAccessView(mDownScale1DBuffer, &DescUAV, &mDownScale1DUAV));
 	DX_SetDebugName(mDownScale1DUAV, "PostFX - Luminance Down Scale 1D UAV");
 
-	D3D11_SHADER_RESOURCE_VIEW_DESC dsrvd;
-	ZeroMemory(&dsrvd, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 	dsrvd.Format = DXGI_FORMAT_UNKNOWN;
 	dsrvd.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
 	dsrvd.Buffer.NumElements = mDownScaleGroups;
@@ -244,11 +241,14 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	// point sampler
 	D3D11_SAMPLER_DESC samDesc;
 	ZeroMemory(&samDesc, sizeof(samDesc));
+	samDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 	samDesc.AddressU = samDesc.AddressV = samDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
 	samDesc.MaxAnisotropy = 1;
-	samDesc.MaxLOD = D3D11_FLOAT32_MAX;
-	samDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
 	samDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	samDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	V_RETURN(device->CreateSamplerState(&samDesc, &mSampLinear));
+
+	samDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
 	V_RETURN(device->CreateSamplerState(&samDesc, &mSampPoint));
 	return true;
 
@@ -288,14 +288,42 @@ void PostFX::Release()
 	SAFE_RELEASE(mHorizontalBlurCS);
 	SAFE_RELEASE(mVerticalBlurCS);
 	SAFE_RELEASE(mSampPoint);
+	SAFE_RELEASE(mSampLinear);
 }
 
-void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11RenderTargetView* pLDRRTV)
+void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11RenderTargetView* pLDRRTV, bool enableBloom)
 {
+	// Constants
+	D3D11_MAPPED_SUBRESOURCE MappedResource;
+	pd3dImmediateContext->Map(mDownScaleCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource);
+	TDownScaleCB* pDownScale = (TDownScaleCB*)MappedResource.pData;
+	pDownScale->width = mWidth / 4;
+	pDownScale->height = mHeight / 4;
+	pDownScale->totalPixels = pDownScale->width * pDownScale->height;
+	pDownScale->groupSize = mDownScaleGroups;
+	pDownScale->adaptation = mAdaptation;
+	pDownScale->bloomThreshold = mBloomThreshold;
+	pd3dImmediateContext->Unmap(mDownScaleCB, 0);
+	ID3D11Buffer* arrConstBuffers[1] = { mDownScaleCB };
+	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
+
 	// Down scale the HDR image
 	ID3D11RenderTargetView* rt[1] = { NULL };
 	pd3dImmediateContext->OMSetRenderTargets(1, rt, NULL);
 	DownScale(pd3dImmediateContext, pHDRSRV);
+
+	if (enableBloom)
+	{
+		// Bloom
+		Bloom(pd3dImmediateContext);
+
+		// Blur the bloom values
+		Blur(pd3dImmediateContext, mTempSRV[0], mBloomUAV);
+	}
+
+	// Cleanup
+	ZeroMemory(&arrConstBuffers, sizeof(arrConstBuffers));
+	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
 
 	// Do the final pass
 	rt[0] = pLDRRTV;
@@ -326,26 +354,12 @@ void PostFX::SetParameters(float middleGrey, float white, float adaptation, floa
 void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV)
 {
 	// Output
-	ID3D11UnorderedAccessView* arrUAVs[1] = { mDownScale1DUAV };
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, (UINT*)(&arrUAVs));
+	ID3D11UnorderedAccessView* arrUAVs[2] = { mDownScale1DUAV, mDownScaleUAV };
+	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 2, arrUAVs, NULL);
 
 	// Input
 	ID3D11ShaderResourceView* arrViews[2] = { pHDRSRV, NULL };
 	pd3dImmediateContext->CSSetShaderResources(0, 1, arrViews);
-
-	// Constants
-	D3D11_MAPPED_SUBRESOURCE MappedResource;
-	pd3dImmediateContext->Map(mDownScaleCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource);
-	TDownScaleCB* pDownScale = (TDownScaleCB*)MappedResource.pData;
-	pDownScale->width = mWidth / 4;
-	pDownScale->height = mHeight / 4;
-	pDownScale->totalPixels = pDownScale->width * pDownScale->height;
-	pDownScale->groupSize = mDownScaleGroups;
-	pDownScale->adaptation = mAdaptation;
-	pd3dImmediateContext->Unmap(mDownScaleCB, 0);
-	ID3D11Buffer* arrConstBuffers[1] = { mDownScaleCB };
-	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
-
 
 	// Shader
 	pd3dImmediateContext->CSSetShader(mDownScaleFirstPassCS, NULL, 0);
@@ -353,22 +367,20 @@ void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 	// Execute the downscales first pass with enough groups to cover the entire full res HDR buffer
 	pd3dImmediateContext->Dispatch(mDownScaleGroups, 1, 1);
 
+
 	///////////////////////////////////////////////
 	// Second pass - reduce to a single pixel
 	///////////////////////////////////////////////
 
 	// Output
-	//ZeroMemory(arrUAVs, sizeof(arrUAVs));
+	ZeroMemory(arrUAVs, sizeof(arrUAVs));
 	arrUAVs[0] = mAvgLumUAV;
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, (UINT*)(&arrUAVs));
+	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 2, arrUAVs, NULL);
 
 	// Input
 	arrViews[0] = mDownScale1DSRV;
 	arrViews[1] = mPrevAvgLumSRV;
 	pd3dImmediateContext->CSSetShaderResources(0, 2, arrViews);
-
-	// Constants
-	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
 
 	// Shader
 	pd3dImmediateContext->CSSetShader(mDownScaleSecondPassCS, NULL, 0);
@@ -378,26 +390,84 @@ void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 
 	// Cleanup
 	pd3dImmediateContext->CSSetShader(NULL, NULL, 0);
-	ZeroMemory(arrConstBuffers, sizeof(arrConstBuffers));
-	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
 	ZeroMemory(arrViews, sizeof(arrViews));
 	pd3dImmediateContext->CSSetShaderResources(0, 2, arrViews);
 	ZeroMemory(arrUAVs, sizeof(arrUAVs));
-	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, (UINT*)(&arrUAVs));
+	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 2, arrUAVs, (UINT*)(&arrUAVs));
 }
 
 void PostFX::Bloom(ID3D11DeviceContext* pd3dImmediateContext)
 {
+	// Input
+	ID3D11ShaderResourceView* arrViews[2] = { mDownScaleSRV, mAvgLumSRV };
+	pd3dImmediateContext->CSSetShaderResources(0, 2, arrViews);
+
+	// Output
+	ID3D11UnorderedAccessView* arrUAVs[1] = { mTempUAV[0] };
+	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, NULL);
+
+	// Shader
+	pd3dImmediateContext->CSSetShader(mBloomRevealCS, NULL, 0);
+
+	// Execute the downscales first pass with enough groups to cover the entire full res HDR buffer
+	pd3dImmediateContext->Dispatch(mDownScaleGroups, 1, 1);
+
+	// Cleanup
+	pd3dImmediateContext->CSSetShader(NULL, NULL, 0);
+	ZeroMemory(arrViews, sizeof(arrViews));
+	pd3dImmediateContext->CSSetShaderResources(0, 2, arrViews);
+	ZeroMemory(arrUAVs, sizeof(arrUAVs));
+	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, NULL);
 }
 
 void PostFX::Blur(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pInput, ID3D11UnorderedAccessView* pOutput)
 {
+	//////////////////////////////////////////
+	// horizontal gaussian filter
+
+	// Output
+	ID3D11UnorderedAccessView* arrUAVs[1] = { mTempUAV[1] };
+	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, NULL);
+
+	// Input
+	ID3D11ShaderResourceView* arrViews[1] = { pInput };
+	pd3dImmediateContext->CSSetShaderResources(0, 1, arrViews);
+
+	// Shader
+	pd3dImmediateContext->CSSetShader(mHorizontalBlurCS, NULL, 0);
+
+	// Execute the horizontal filter
+	pd3dImmediateContext->Dispatch((UINT)ceil((mWidth / 4.0f) / (128.0f - 12.0f)), (UINT)ceil(mHeight / 4.0f), 1);
+
+	////////////////////////////////////////////
+	// vertical gaussian filter
+
+	// Output
+	arrUAVs[0] = pOutput;
+	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, NULL);
+
+	// Input
+	arrViews[0] = mTempSRV[1];
+	pd3dImmediateContext->CSSetShaderResources(0, 1, arrViews);
+
+	// Shader
+	pd3dImmediateContext->CSSetShader(mVerticalBlurCS, NULL, 0);
+
+	// Execute the vertical filter
+	pd3dImmediateContext->Dispatch((UINT)ceil(mWidth / 4.0f), (UINT)ceil((mHeight / 4.0f) / (128.0f - 12.0f)), 1);
+
+	// Cleanup
+	pd3dImmediateContext->CSSetShader(NULL, NULL, 0);
+	ZeroMemory(arrViews, sizeof(arrViews));
+	pd3dImmediateContext->CSSetShaderResources(0, 1, arrViews);
+	ZeroMemory(arrUAVs, sizeof(arrUAVs));
+	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, NULL);
 }
 
 void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV)
 {
-	ID3D11ShaderResourceView* arrViews[2] = { pHDRSRV, mAvgLumSRV };
-	pd3dImmediateContext->PSSetShaderResources(0, 2, arrViews);
+	ID3D11ShaderResourceView* arrViews[3] = { pHDRSRV, mAvgLumSRV, mBloomSRV };
+	pd3dImmediateContext->PSSetShaderResources(0, 3, arrViews);
 
 	// Constants
 	D3D11_MAPPED_SUBRESOURCE MappedResource;
@@ -406,7 +476,8 @@ void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 	pFinalPass->MiddleGrey = mMiddleGrey;
 	pFinalPass->LumWhiteSqr = mWhite;
 	pFinalPass->LumWhiteSqr *= pFinalPass->MiddleGrey; // Scale by the middle grey value
-	pFinalPass->LumWhiteSqr *= pFinalPass->LumWhiteSqr; // Squre
+	pFinalPass->LumWhiteSqr *= pFinalPass->LumWhiteSqr; // Square
+	pFinalPass->BloomScale = mBloomScale;
 	pd3dImmediateContext->Unmap(mFinalPassCB, 0);
 	ID3D11Buffer* arrConstBuffers[1] = { mFinalPassCB };
 	pd3dImmediateContext->PSSetConstantBuffers(0, 1, arrConstBuffers);
@@ -416,8 +487,8 @@ void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 	pd3dImmediateContext->IASetIndexBuffer(NULL, DXGI_FORMAT_UNKNOWN, 0);
 	pd3dImmediateContext->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
-	ID3D11SamplerState* arrSamplers[1] = { mSampPoint };
-	pd3dImmediateContext->PSSetSamplers(0, 1, arrSamplers);
+	ID3D11SamplerState* arrSamplers[2] = { mSampPoint, mSampLinear };
+	pd3dImmediateContext->PSSetSamplers(0, 2, arrSamplers);
 
 	// Set the shaders
 	pd3dImmediateContext->VSSetShader(mFullScreenQuadVS, NULL, 0);
@@ -427,7 +498,7 @@ void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 
 	// Cleanup
 	ZeroMemory(arrViews, sizeof(arrViews));
-	pd3dImmediateContext->PSSetShaderResources(0, 2, arrViews);
+	pd3dImmediateContext->PSSetShaderResources(0, 3, arrViews);
 	ZeroMemory(arrConstBuffers, sizeof(arrConstBuffers));
 	pd3dImmediateContext->PSSetConstantBuffers(0, 1, arrConstBuffers);
 	pd3dImmediateContext->VSSetShader(NULL, NULL, 0);
