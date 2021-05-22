@@ -35,6 +35,76 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	mHeight = height;
 	mDownScaleGroups = (UINT)ceil((float)(mWidth * mHeight / 16) / 1024.0f);
 
+	// Allocate the downscaled target
+	D3D11_TEXTURE2D_DESC dtd = {
+		mWidth / 4, //UINT Width;
+		mHeight / 4, //UINT Height;
+		1, //UINT MipLevels;
+		1, //UINT ArraySize;
+		DXGI_FORMAT_R16G16B16A16_TYPELESS, //DXGI_FORMAT Format;
+		1, //DXGI_SAMPLE_DESC SampleDesc;
+		0,
+		D3D11_USAGE_DEFAULT,//D3D11_USAGE Usage;
+		D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS,//UINT BindFlags;
+		0,//UINT CPUAccessFlags;
+		0//UINT MiscFlags;    
+	};
+	V_RETURN(device->CreateTexture2D(&dtd, NULL, &mDownScaleRT));
+	DX_SetDebugName(mDownScaleRT, "PostFX - Down Scaled RT");
+
+	// Create the resource views
+	D3D11_SHADER_RESOURCE_VIEW_DESC dsrvd;
+	ZeroMemory(&dsrvd, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
+	dsrvd.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	dsrvd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	dsrvd.Texture2D.MipLevels = 1;
+	V_RETURN(device->CreateShaderResourceView(mDownScaleRT, &dsrvd, &mDownScaleSRV));
+	DX_SetDebugName(mDownScaleSRV, "PostFX - Down Scaled SRV");
+
+	// Create the UAVs
+	D3D11_UNORDERED_ACCESS_VIEW_DESC DescUAV;
+	ZeroMemory(&DescUAV, sizeof(D3D11_UNORDERED_ACCESS_VIEW_DESC));
+	DescUAV.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	DescUAV.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	DescUAV.Buffer.FirstElement = 0;
+	DescUAV.Buffer.NumElements = mWidth * mHeight / 16;
+	V_RETURN(device->CreateUnorderedAccessView(mDownScaleRT, &DescUAV, &mDownScaleUAV));
+	DX_SetDebugName(mDownScaleUAV, "PostFX - Down Scaled UAV");
+
+	////////////////////////////////
+	// Allocate temporary target  //
+	////////////////////////////////
+	V_RETURN(device->CreateTexture2D(&dtd, NULL, &mTempRT[0]));
+	DX_SetDebugName(mTempRT[0], "PostFX - Temp 0 RT");
+
+	V_RETURN(device->CreateShaderResourceView(mTempRT[0], &dsrvd, &mTempSRV[0]));
+	DX_SetDebugName(mTempSRV[0], "PostFX - Temp 0 SRV");
+
+	V_RETURN(device->CreateUnorderedAccessView(mTempRT[0], &DescUAV, &mTempUAV[0]));
+	DX_SetDebugName(mTempUAV[0], "PostFX - Temp 0 UAV");
+
+	V_RETURN(device->CreateTexture2D(&dtd, NULL, &mTempRT[1]));
+	DX_SetDebugName(mTempRT[1], "PostFX - Temp 1 RT");
+
+	V_RETURN(device->CreateShaderResourceView(mTempRT[1], &dsrvd, &mTempSRV[1]));
+	DX_SetDebugName(mTempSRV[1], "PostFX - Temp 1 SRV");
+
+	V_RETURN(device->CreateUnorderedAccessView(mTempRT[1], &DescUAV, &mTempUAV[1]));
+	DX_SetDebugName(mTempUAV[1], "PostFX - Temp 1 UAV");
+
+	/////////////////////////////
+	// Allocate bloom target   //
+	/////////////////////////////
+	V_RETURN(device->CreateTexture2D(&dtd, NULL, &mBloomRT));
+	DX_SetDebugName(mBloomRT, "PostFX - Bloom RT");
+
+	V_RETURN(device->CreateShaderResourceView(mBloomRT, &dsrvd, &mBloomSRV));
+	DX_SetDebugName(mBloomSRV, "PostFX - Bloom SRV");
+
+	V_RETURN(device->CreateUnorderedAccessView(mBloomRT, &DescUAV, &mBloomUAV));
+	DX_SetDebugName(mBloomUAV, "PostFX - Bloom UAV");
+
+
 	////////////////////////////////////////////////////////////
 	// Down scaled luminance buffer
 	// buffer, UAV unordered access view and SRV descriptor
@@ -45,7 +115,7 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	bufferDesc.ByteWidth = mDownScaleGroups * bufferDesc.StructureByteStride;
 	bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
 	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mDownScale1DBuffer));
-	DX_SetDebugName(mDownScale1DBuffer, "PostFX - Down Scale 1D Buffer");
+	DX_SetDebugName(mDownScale1DBuffer, "PostFX - Luminance Down Scale 1D Buffer");
 
 	D3D11_UNORDERED_ACCESS_VIEW_DESC DescUAV;
 	ZeroMemory(&DescUAV, sizeof(D3D11_UNORDERED_ACCESS_VIEW_DESC));
@@ -53,41 +123,41 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	DescUAV.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
 	DescUAV.Buffer.NumElements = mDownScaleGroups;
 	V_RETURN(device->CreateUnorderedAccessView(mDownScale1DBuffer, &DescUAV, &mDownScale1DUAV));
-	DX_SetDebugName(mDownScale1DSRV, "PostFX - Luminance Down Scale 1D SRV");
+	DX_SetDebugName(mDownScale1DUAV, "PostFX - Luminance Down Scale 1D UAV");
 
-	/////////////////////////////////////////////////////
-	// Average luminance buffer
-	/////////////////////////////////////////////////////
 	D3D11_SHADER_RESOURCE_VIEW_DESC dsrvd;
 	ZeroMemory(&dsrvd, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
 	dsrvd.Format = DXGI_FORMAT_UNKNOWN;
 	dsrvd.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
 	dsrvd.Buffer.NumElements = mDownScaleGroups;
 	V_RETURN(device->CreateShaderResourceView(mDownScale1DBuffer, &dsrvd, &mDownScale1DSRV));
-	DX_SetDebugName(mDownScale1DSRV, "PostFX - Down Scale 1D SRV");
+	DX_SetDebugName(mDownScale1DSRV, "PostFX - Luminance Down Scale 1D SRV");
 
+	// allocate average luminance buffers
 	bufferDesc.ByteWidth = sizeof(float);
 	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mAvgLumBuffer));
 	DX_SetDebugName(mAvgLumBuffer, "PostFX - Average Luminance Buffer");
-
-	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mPrevAvgLumBuffer));
-	DX_SetDebugName(mPrevAvgLumBuffer, "PostFX - Previous Average Luminance Buffer");
 
 	DescUAV.Buffer.NumElements = 1;
 	V_RETURN(device->CreateUnorderedAccessView(mAvgLumBuffer, &DescUAV, &mAvgLumUAV));
 	DX_SetDebugName(mAvgLumUAV, "PostFX - Average Luminance UAV");
 
-	V_RETURN(device->CreateUnorderedAccessView(mPrevAvgLumBuffer, &DescUAV, &mPrevAvgLumUAV));
-	DX_SetDebugName(mPrevAvgLumUAV, "PostFX - Previous Average Luminance UAV");
-
 	dsrvd.Buffer.NumElements = 1;
 	V_RETURN(device->CreateShaderResourceView(mAvgLumBuffer, &dsrvd, &mAvgLumSRV));
 	DX_SetDebugName(mAvgLumSRV, "PostFX - Average Luminance SRV");
 
+	// Allocate previous frame average luminance buffer
+	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mPrevAvgLumBuffer));
+	DX_SetDebugName(mPrevAvgLumBuffer, "PostFX - Previous Average Luminance Buffer");
+	
+	V_RETURN(device->CreateUnorderedAccessView(mPrevAvgLumBuffer, &DescUAV, &mPrevAvgLumUAV));
+	DX_SetDebugName(mPrevAvgLumUAV, "PostFX - Previous Average Luminance UAV");
+
+
 	V_RETURN(device->CreateShaderResourceView(mPrevAvgLumBuffer, &dsrvd, &mPrevAvgLumSRV));
 	DX_SetDebugName(mPrevAvgLumSRV, "PostFX - Previous Average Luminance SRV");
 
-
+	// allocate constant buffer
 	ZeroMemory(&bufferDesc, sizeof(bufferDesc));
 	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
@@ -100,7 +170,13 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mFinalPassCB));
 	DX_SetDebugName(mFinalPassCB, "PostFX - Final Pass CB");
 
-	// Compile the shaders
+	bufferDesc.ByteWidth = sizeof(TBlurCB);
+	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mBlurCB));
+	DX_SetDebugName(mBlurCB, "PostFX - Blur CB");
+
+	///////////////////////////////////////
+	// Compile the shaders               //
+	///////////////////////////////////////
 	DWORD dwShaderFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
 #if defined( DEBUG ) || defined( _DEBUG )
 	// Set the D3DCOMPILE_DEBUG flag to embed debug information in the shaders.
@@ -109,7 +185,9 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 
 	ID3DBlob* pShaderBlob = NULL;
 
-	// Downscale shader
+	//////////////////////
+	// Downscale shader //
+	//////////////////////
 	WCHAR postDownScaleShaderSrc[MAX_PATH] = L"..\\EffectsRendering\\Shaders\\PostDownScaleFX.hlsl";
 
 	V_RETURN(CompileShader(postDownScaleShaderSrc, NULL, "DownScaleFirstPass", "cs_5_0", dwShaderFlags, &pShaderBlob));
@@ -124,7 +202,32 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	DX_SetDebugName(m_pDownScaleSecondPassCS, "Post FX - Down Scale Second Pass CS");
 	SAFE_RELEASE(pShaderBlob);
 
-	// PostFX shader
+	V_RETURN(CompileShader(postDownScaleShaderSrc, NULL, "BloomReveal", "cs_5_0", dwShaderFlags, &pShaderBlob));
+	V_RETURN(device->CreateComputeShader(pShaderBlob->GetBufferPointer(),
+		pShaderBlob->GetBufferSize(), NULL, &mBloomRevealCS));
+	DX_SetDebugName(mBloomRevealCS, "Post FX - Bloom Reveal CS");
+	SAFE_RELEASE(pShaderBlob);
+
+	/////////////////////////////
+	// Gaussian Blur Shader    //
+	/////////////////////////////
+	WCHAR blurShaderSrc[MAX_PATH] = L"..\\EffectsRendering\\Shaders\\Blur.hlsl";
+
+	V_RETURN(CompileShader(blurShaderSrc, NULL, "VerticalFilter", "cs_5_0", dwShaderFlags, &pShaderBlob));
+	V_RETURN(device->CreateComputeShader(pShaderBlob->GetBufferPointer(),
+		pShaderBlob->GetBufferSize(), NULL, &mVerticalBlurCS));
+	DX_SetDebugName(mVerticalBlurCS, "Post FX - Vertical Blur CS");
+	SAFE_RELEASE(pShaderBlob);
+
+	V_RETURN(CompileShader(blurShaderSrc, NULL, "HorizFilter", "cs_5_0", dwShaderFlags, &pShaderBlob));
+	V_RETURN(device->CreateComputeShader(pShaderBlob->GetBufferPointer(),
+		pShaderBlob->GetBufferSize(), NULL, &mHorizontalBlurCS));
+	DX_SetDebugName(mHorizontalBlurCS, "Post FX - Horizontal Blur CS");
+	SAFE_RELEASE(pShaderBlob);
+
+	/////////////////////
+	// PostFX shader   //
+	/////////////////////
 	WCHAR postFXShaderSrc[MAX_PATH] = L"..\\EffectsRendering\\Shaders\\PostFX.hlsl";
 	V_RETURN(CompileShader(postFXShaderSrc, NULL, "FullScreenQuadVS", "vs_5_0", dwShaderFlags, &pShaderBlob));
 	V_RETURN(device->CreateVertexShader(pShaderBlob->GetBufferPointer(),

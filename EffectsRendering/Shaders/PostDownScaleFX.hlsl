@@ -3,6 +3,7 @@ StructuredBuffer<float> AverageValues1D : register(t0);
 StructuredBuffer<float> PrevAvgLum : register(t1);
 
 RWStructuredBuffer<float> AverageLum : register(u0);
+RWTexture2D<float4> HDRDownScale	 : register(u1);
 
 cbuffer DownScaleConstants : register(b0)
 {
@@ -10,6 +11,7 @@ cbuffer DownScaleConstants : register(b0)
 	uint Domain		 : packoffset(c0.z); // Total pixel in the downscaled image
 	uint GroupSize	 : packoffset(c0.w); // Number of groups dispached on the first pass
 	float Adaptation : packoffset(c1);   // Adaptation factor
+	float BloomThreshold : packoffset(c1.y); // Bloom threshold percentage
 }
 
 // Group shared memory to store the intermediate results
@@ -194,5 +196,33 @@ void DownScaleSecondPass(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_Gr
 		// Store the final value
 		AverageLum[0] = max(adaptedAverageLum, 0.0001);
 
+	}
+}
+
+//------------------------
+// Bloom compute shader
+//------------------------
+
+Texture2D<float4> HDRDownScaleTex : register(t0);
+StructuredBuffer<float> AvgLum : register(t1);
+
+RWTexture2D<float4> Bloom : register(u0);
+
+[numthreads(1024, 1, 1)]
+void BloomReveal(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+	uint2 CurPixel = uint2(dispatchThreadId.x % Res.x, dispatchThreadId.x / Res.x);
+
+	// Skip out of bound pixels
+	if (CurPixel.y < Res.y)
+	{
+		float4 color = HDRDownScaleTex.Load(int3(CurPixel, 0));
+		float Lum = dot(color, LUM_FACTOR);
+		float avgLum = AvgLum[0];
+
+		// Find the color scale
+		float colorScale = saturate(Lum - avgLum * BloomThreshold);
+
+		Bloom[CurPixel.xy] = color * colorScale;
 	}
 }

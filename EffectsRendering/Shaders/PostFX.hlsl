@@ -1,7 +1,9 @@
 Texture2D<float4> HDRTex		: register(t0);
 StructuredBuffer<float> AvgLum	: register(t1);
+Texture2D<float4> BloomTex		: register(t2);
 
 SamplerState PointSampler		: register(s0);
+SamplerState LinearSampler		: register(s1);
 
 static const float2 arrBasePos[4] = {
 	float2(-1.0, 1.0),
@@ -43,8 +45,9 @@ VS_OUTPUT FullScreenQuadVS(uint VertexID : SV_VertexID)
 cbuffer FinalPassConstants : register(b0)
 {
 	// Tone mapping
-	float MiddleGrey : packoffset(c0);
-	float LumWhiteSqr : packoffset(c0.y);
+	float MiddleGrey	: packoffset(c0);
+	float LumWhiteSqr	: packoffset(c0.y);
+	float BloomScale	: packoffset(c0.z);
 }
 
 static const float3 LUM_FACTOR = float3(0.299, 0.587, 0.114);
@@ -64,6 +67,9 @@ float4 FinalPassPS(VS_OUTPUT In) : SV_TARGET
 {
 	// Get the color sample
 	float3 color = HDRTex.Sample(PointSampler, In.UV.xy).xyz;
+
+	// Add the bloom contribution
+	color += BloomScale * BloomTex.Sample(LinearSampler, In.UV.xy).xyz;
 
 	// Tone mapping
 	color = ToneMapping(color);
