@@ -185,7 +185,7 @@ bool SceneManager::Init(ID3D11Device* device, Camera* camera)
 	// Create the Sky object
 	mSky = new Sky();
 	std::string skyfileName = "..\\Assets\\grasscube1024.dds"; 
-	if (!mSky->Init(device, skyfileName, 5000.0f))
+	if (!mSky->Init(device, skyfileName, 5000.0f, 10.0f))
 	{
 		return false;
 	}
@@ -317,12 +317,12 @@ void SceneManager::RenderSceneNoShaders(ID3D11DeviceContext * pd3dImmediateConte
 
 }
 
-void SceneManager::RenderSky(ID3D11DeviceContext* pd3dImmediateContext, XMVECTOR sunDirection, XMVECTOR sunColor)
+void SceneManager::RenderSky(ID3D11DeviceContext* pd3dImmediateContext, XMFLOAT3 sunDirection, XMFLOAT3 sunColor)
 {
 	if (mSky)
 	{
 		// TODO sun direction
-		mSky->Render(pd3dImmediateContext, mCamera);
+		mSky->Render(pd3dImmediateContext, mCamera, sunDirection, sunColor);
 	}
 
 }

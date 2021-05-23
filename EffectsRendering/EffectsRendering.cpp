@@ -22,6 +22,7 @@ IMPLEMENTED
 	- diffuse texture
 	- normal maps,  normal texture
 	- HDR, tonemapping and adaptation
+	- bloom
 */
 
 
@@ -35,8 +36,8 @@ IMPLEMENTED
 	- fog - Distance Based Fog
 	- sunray
 	- lens flare
+	- Bokeh
 	- DoF  and add to camera gui setting
-	- bloom
 	- screenshot name timestamp and save to folder
 */
 

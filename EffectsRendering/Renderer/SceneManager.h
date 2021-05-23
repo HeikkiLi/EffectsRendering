@@ -25,7 +25,7 @@ public:
 	void RenderSceneNoShaders(ID3D11DeviceContext* pd3dImmediateContext);
 	
 	// Renders sky and sun
-	void RenderSky(ID3D11DeviceContext* pd3dImmediateContext, XMVECTOR sunDirection, XMVECTOR sunColor);
+	void RenderSky(ID3D11DeviceContext* pd3dImmediateContext, XMFLOAT3 sunDirection, XMFLOAT3 sunColor);
 
 	void RotateObjects(float dx, float dy, float dz);
 	Mesh* GetMesh(int index) { return mMeshes[index]; }

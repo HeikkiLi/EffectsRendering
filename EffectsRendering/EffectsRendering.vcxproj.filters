@@ -214,5 +214,8 @@
     <None Include="Shaders\Blur.hlsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\Emissive.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

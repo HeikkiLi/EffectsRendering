@@ -10,6 +10,13 @@ struct CB_VS_PER_FRAME
 {
 	XMMATRIX mWorldViewProjection;
 };
+
+struct CB_EMISSIVE
+{
+	XMMATRIX WolrdViewProj;
+	XMFLOAT3 Color;
+	float pad;
+};
 #pragma pack(pop)
 
 Sky::Sky()
@@ -24,10 +31,22 @@ Sky::Sky()
 	mSkyVertexShaderCB = NULL;
 	mSkyNoDepthStencilMaskState = NULL;
 	mCullNone = NULL;
+	mSunRadius = 10.0f;
+
+	mEmissiveCB = NULL;
+	mEmissiveVertexShader = NULL;
+	mEmissiveVSLayout = NULL;
+	mEmissivePixelShader = NULL;
+
+	mSunSphere = NULL;
 }
 
-bool Sky::Init(ID3D11Device* device, const std::string& cubemapFilename, float skySphereRadius)
+bool Sky::Init(ID3D11Device* device, const std::string& cubemapFilename, float skySphereRadius, float sunRadius)
 {
+	HRESULT hr;
+
+	mSunRadius = sunRadius;
+
 	// load cubemap from file
 	mCubeMapSRV = TextureManager::Instance()->CreateTexture(cubemapFilename);
 
@@ -89,6 +108,10 @@ bool Sky::Init(ID3D11Device* device, const std::string& cubemapFilename, float s
 	if (FAILED(device->CreateBuffer(&cbDesc, NULL, &mSkyVertexShaderCB)))
 		return false;
 
+	cbDesc.ByteWidth = sizeof(CB_EMISSIVE);
+	V_RETURN(device->CreateBuffer(&cbDesc, NULL, &mEmissiveCB));
+	DX_SetDebugName(mEmissiveCB, "Emissive CB");
+
 	// create Sky shaders
 	DWORD dwShaderFlags = D3DCOMPILE_ENABLE_STRICTNESS;
 #if defined( DEBUG ) || defined( _DEBUG )
@@ -112,7 +135,7 @@ bool Sky::Init(ID3D11Device* device, const std::string& cubemapFilename, float s
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0}
 	};
 
-	HRESULT hr = device->CreateInputLayout(layout, 1, pShaderBlob->GetBufferPointer(),
+	hr = device->CreateInputLayout(layout, 1, pShaderBlob->GetBufferPointer(),
 		pShaderBlob->GetBufferSize(), &mSkyVSLayout);
 	SAFE_RELEASE(pShaderBlob);
 	if (FAILED(hr))
@@ -127,10 +150,36 @@ bool Sky::Init(ID3D11Device* device, const std::string& cubemapFilename, float s
 		return false;
 
 
+	// Emissive shaders
+	WCHAR skyShaderSrc[MAX_PATH] = L"..\\EffectsRendering\\Shaders\\Emissive.hlsl";
+
+	V_RETURN(CompileShader(skyShaderSrc, NULL, "RenderEmissiveVS", "vs_5_0", dwShaderFlags, &pShaderBlob));
+	V_RETURN(device->CreateVertexShader(pShaderBlob->GetBufferPointer(),
+		pShaderBlob->GetBufferSize(), NULL, &mEmissiveVertexShader));
+	DX_SetDebugName(mEmissiveVertexShader, "RenderEmissiveVS");
+
+	// Create a layout for the object data
+	const D3D11_INPUT_ELEMENT_DESC layoutEmissive[] =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
+
+	V_RETURN(device->CreateInputLayout(layoutEmissive, ARRAYSIZE(layoutEmissive), pShaderBlob->GetBufferPointer(),
+		pShaderBlob->GetBufferSize(), &mEmissiveVSLayout));
+	DX_SetDebugName(mEmissiveVSLayout, "Emissive Layout");
+	SAFE_RELEASE(pShaderBlob);
+
+	V_RETURN(CompileShader(skyShaderSrc, NULL, "RenderEmissivePS", "ps_5_0", dwShaderFlags, &pShaderBlob));
+	V_RETURN(device->CreatePixelShader(pShaderBlob->GetBufferPointer(),
+		pShaderBlob->GetBufferSize(), NULL, &mEmissivePixelShader));
+	DX_SetDebugName(mEmissivePixelShader, "RenderEmissivePS");
+	SAFE_RELEASE(pShaderBlob);
+
+
 	D3D11_DEPTH_STENCIL_DESC descDepth;
 	descDepth.DepthEnable = FALSE;
 	descDepth.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-	descDepth.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+	descDepth.DepthFunc = D3D11_COMPARISON_LESS;
 	descDepth.StencilEnable = TRUE;
 	descDepth.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
 	descDepth.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
@@ -138,7 +187,7 @@ bool Sky::Init(ID3D11Device* device, const std::string& cubemapFilename, float s
 	descDepth.FrontFace = noSkyStencilOp;
 	descDepth.BackFace = noSkyStencilOp;
 	V_RETURN(device->CreateDepthStencilState(&descDepth, &mSkyNoDepthStencilMaskState));
-
+	DX_SetDebugName(mSkyNoDepthStencilMaskState, "Sky No Depth Stencil Mask DS");
 
 	D3D11_RASTERIZER_DESC desc;
 	ZeroMemory(&desc, sizeof(desc));
@@ -147,7 +196,6 @@ bool Sky::Init(ID3D11Device* device, const std::string& cubemapFilename, float s
 	desc.ScissorEnable = true;
 	desc.DepthClipEnable = true;
 	V_RETURN(device->CreateRasterizerState(&desc, &mCullNone));
-
 
 	return true;
 }
@@ -165,6 +213,11 @@ Sky::~Sky()
 
 	SAFE_RELEASE(mSkyNoDepthStencilMaskState);
 	SAFE_RELEASE(mCullNone);
+
+	SAFE_RELEASE(mEmissiveCB);
+	SAFE_RELEASE(mEmissiveVertexShader);
+	SAFE_RELEASE(mEmissiveVSLayout);
+	SAFE_RELEASE(mEmissivePixelShader);
 }
 
 ID3D11ShaderResourceView* Sky::CubeMapSRV()
@@ -172,7 +225,56 @@ ID3D11ShaderResourceView* Sky::CubeMapSRV()
 	return mCubeMapSRV;
 }
 
-void Sky::Render(ID3D11DeviceContext* deviceContext, const Camera* camera)
+void Sky::Render(ID3D11DeviceContext* deviceContext, const Camera* camera, XMFLOAT3 sunDirection, XMFLOAT3 sunColor)
+{
+	// Store the previous depth state
+	ID3D11DepthStencilState* pPrevDepthState;
+	UINT nPrevStencil;
+	deviceContext->OMGetDepthStencilState(&pPrevDepthState, &nPrevStencil);
+
+	// Set the depth state for the sky rendering
+	deviceContext->OMSetDepthStencilState(mSkyNoDepthStencilMaskState, 1);
+
+
+	XMMATRIX lightWorldScale = XMMatrixScaling(mSunRadius, mSunRadius, mSunRadius);
+	
+	const XMFLOAT3 eyePos = camera->GetPosition();
+	XMMATRIX lightWorldTrans = XMMatrixTranslation(eyePos.x - 200.0f * sunDirection.x, -200.0f * sunDirection.y, eyePos.z - 200.0f * sunDirection.z);
+	const XMMATRIX view =  camera->View();
+	const XMMATRIX proj = camera->Proj();
+	XMMATRIX worldViewProjection = lightWorldScale * lightWorldTrans * view * proj;
+
+	HRESULT hr;
+	D3D11_MAPPED_SUBRESOURCE MappedResource;
+	V(deviceContext->Map(mEmissiveCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource));
+	CB_EMISSIVE* pEmissiveCB = (CB_EMISSIVE*)MappedResource.pData;
+	pEmissiveCB->WolrdViewProj = XMMatrixTranspose(worldViewProjection);
+	pEmissiveCB->Color =sunColor;
+	deviceContext->Unmap(mEmissiveCB, 0);
+	ID3D11Buffer* arrConstBuffers[1] = { mEmissiveCB };
+	deviceContext->VSSetConstantBuffers(2, 1, arrConstBuffers);
+	deviceContext->PSSetConstantBuffers(2, 1, arrConstBuffers);
+
+	// Set the vertex layout
+	deviceContext->IASetInputLayout(mEmissiveVSLayout);
+
+	// Set the shaders
+	deviceContext->VSSetShader(mEmissiveVertexShader, NULL, 0);
+	deviceContext->PSSetShader(mEmissivePixelShader, NULL, 0);
+
+	// This is an over kill for rendering the sun but it works
+	mSunSphere->Render(deviceContext);
+
+	// Cleanup
+	deviceContext->VSSetShader(NULL, NULL, 0);
+	deviceContext->PSSetShader(NULL, NULL, 0);
+
+	// Restore the states
+	deviceContext->OMSetDepthStencilState(pPrevDepthState, nPrevStencil);
+	SAFE_RELEASE(pPrevDepthState);
+}
+
+void Sky::RenderSkyBox(ID3D11DeviceContext* deviceContext, const Camera* camera, XMFLOAT3 sunDirection, XMFLOAT3 sunColor)
 {
 
 	// Store the previous depth state
