@@ -12,9 +12,9 @@ public:
 	void Release();
 
 	// do post processing
-	void PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11RenderTargetView* pLDRRTV, bool enableBloom);
+	void PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11RenderTargetView* pLDRRTV);
 	
-	void SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale);
+	void SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale, bool enableBloom);
 
 private:
 
@@ -68,6 +68,7 @@ private:
 	float	mAdaptation;
 	float	mBloomThreshold;
 	float	mBloomScale;
+	bool	mEnableBloom;
 
 	typedef struct
 	{

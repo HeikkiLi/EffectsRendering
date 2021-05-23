@@ -18,6 +18,8 @@ PostFX::PostFX() : mMiddleGrey(0.0025f), mWhite(1.5f), mBloomThreshold(2.0), mBl
 	mTempSRV[1] = NULL;
 	mTempUAV[0] = NULL;
 	mTempUAV[1] = NULL;
+
+	mEnableBloom = true;
 }
 
 PostFX::~PostFX()
@@ -293,7 +295,7 @@ void PostFX::Release()
 	SAFE_RELEASE(mSampLinear);
 }
 
-void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11RenderTargetView* pLDRRTV, bool enableBloom)
+void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11RenderTargetView* pLDRRTV)
 {
 	// Constants
 	D3D11_MAPPED_SUBRESOURCE MappedResource;
@@ -314,7 +316,7 @@ void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11Sha
 	pd3dImmediateContext->OMSetRenderTargets(1, rt, NULL);
 	DownScale(pd3dImmediateContext, pHDRSRV);
 
-	if (enableBloom)
+	if (mEnableBloom)
 	{
 		// Bloom
 		Bloom(pd3dImmediateContext);
@@ -344,13 +346,14 @@ void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11Sha
 	mPrevAvgLumSRV = tempSRV;
 }
 
-void PostFX::SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale)
+void PostFX::SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale, bool enableBloom)
 {
 	mMiddleGrey = middleGrey;
 	mWhite = white; 
 	mAdaptation = adaptation;
 	mBloomThreshold = bloomThreshold;
 	mBloomScale = bloomScale;
+	mEnableBloom = enableBloom;
 }
 
 void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV)
@@ -479,7 +482,7 @@ void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 	pFinalPass->LumWhiteSqr = mWhite;
 	pFinalPass->LumWhiteSqr *= pFinalPass->MiddleGrey; // Scale by the middle grey value
 	pFinalPass->LumWhiteSqr *= pFinalPass->LumWhiteSqr; // Square
-	pFinalPass->BloomScale = mBloomScale;
+	pFinalPass->BloomScale = mEnableBloom? mBloomScale: 0.0f;
 	pd3dImmediateContext->Unmap(mFinalPassCB, 0);
 	ID3D11Buffer* arrConstBuffers[1] = { mFinalPassCB };
 	pd3dImmediateContext->PSSetConstantBuffers(0, 1, arrConstBuffers);
