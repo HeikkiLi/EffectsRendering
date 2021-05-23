@@ -114,18 +114,21 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	bufferDesc.StructureByteStride = sizeof(float);
 	bufferDesc.ByteWidth = mDownScaleGroups * bufferDesc.StructureByteStride;
 	bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
 	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mDownScale1DBuffer));
 	DX_SetDebugName(mDownScale1DBuffer, "PostFX - Luminance Down Scale 1D Buffer");
 
 	ZeroMemory(&DescUAV, sizeof(D3D11_UNORDERED_ACCESS_VIEW_DESC));
 	DescUAV.Format = DXGI_FORMAT_UNKNOWN;
 	DescUAV.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+	DescUAV.Buffer.FirstElement = 0;
 	DescUAV.Buffer.NumElements = mDownScaleGroups;
 	V_RETURN(device->CreateUnorderedAccessView(mDownScale1DBuffer, &DescUAV, &mDownScale1DUAV));
 	DX_SetDebugName(mDownScale1DUAV, "PostFX - Luminance Down Scale 1D UAV");
 
 	dsrvd.Format = DXGI_FORMAT_UNKNOWN;
 	dsrvd.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	dsrvd.Buffer.FirstElement = 0;
 	dsrvd.Buffer.NumElements = mDownScaleGroups;
 	V_RETURN(device->CreateShaderResourceView(mDownScale1DBuffer, &dsrvd, &mDownScale1DSRV));
 	DX_SetDebugName(mDownScale1DSRV, "PostFX - Luminance Down Scale 1D SRV");
@@ -150,7 +153,6 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	V_RETURN(device->CreateUnorderedAccessView(mPrevAvgLumBuffer, &DescUAV, &mPrevAvgLumUAV));
 	DX_SetDebugName(mPrevAvgLumUAV, "PostFX - Previous Average Luminance UAV");
 
-
 	V_RETURN(device->CreateShaderResourceView(mPrevAvgLumBuffer, &dsrvd, &mPrevAvgLumSRV));
 	DX_SetDebugName(mPrevAvgLumSRV, "PostFX - Previous Average Luminance SRV");
 
@@ -174,7 +176,7 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	///////////////////////////////////////
 	// Compile the shaders               //
 	///////////////////////////////////////
-	DWORD dwShaderFlags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+	DWORD dwShaderFlags = D3DCOMPILE_ENABLE_STRICTNESS; // | D3DCOMPILE_WARNINGS_ARE_ERRORS;
 #if defined( DEBUG ) || defined( _DEBUG )
 	// Set the D3DCOMPILE_DEBUG flag to embed debug information in the shaders.
 	dwShaderFlags |= D3DCOMPILE_DEBUG;
@@ -190,13 +192,13 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	V_RETURN(CompileShader(postDownScaleShaderSrc, NULL, "DownScaleFirstPass", "cs_5_0", dwShaderFlags, &pShaderBlob));
 	V_RETURN(device->CreateComputeShader(pShaderBlob->GetBufferPointer(),
 		pShaderBlob->GetBufferSize(), NULL, &mDownScaleFirstPassCS));
-	DX_SetDebugName(mFullScreenQuadVS, "Post FX - Down Scale First Pass CS");
+	DX_SetDebugName(mDownScaleFirstPassCS, "Post FX - Down Scale First Pass CS");
 	SAFE_RELEASE(pShaderBlob);
 
 	V_RETURN(CompileShader(postDownScaleShaderSrc, NULL, "DownScaleSecondPass", "cs_5_0", dwShaderFlags, &pShaderBlob));
 	V_RETURN(device->CreateComputeShader(pShaderBlob->GetBufferPointer(),
 		pShaderBlob->GetBufferSize(), NULL, &mDownScaleSecondPassCS));
-	DX_SetDebugName(m_pDownScaleSecondPassCS, "Post FX - Down Scale Second Pass CS");
+	DX_SetDebugName(mDownScaleSecondPassCS, "Post FX - Down Scale Second Pass CS");
 	SAFE_RELEASE(pShaderBlob);
 
 	V_RETURN(CompileShader(postDownScaleShaderSrc, NULL, "BloomReveal", "cs_5_0", dwShaderFlags, &pShaderBlob));
@@ -238,7 +240,7 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	DX_SetDebugName(mFinalPassPS, "Post FX - Final Pass PS");
 	SAFE_RELEASE(pShaderBlob);
 
-	// point sampler
+	// linear and point samplers
 	D3D11_SAMPLER_DESC samDesc;
 	ZeroMemory(&samDesc, sizeof(samDesc));
 	samDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;

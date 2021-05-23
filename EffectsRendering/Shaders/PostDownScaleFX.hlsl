@@ -21,7 +21,8 @@ static const float4 LUM_FACTOR = float4(0.299, 0.587, 0.114, 0);
 
 
 [numthreads(1024, 1, 1)]
-void DownScaleFirstPass(uint3 dispatchThreadId : SV_DispatchThreadID, uint3 groupThreadId : SV_GroupThreadID, uint3 groupId : SV_GroupID)
+void DownScaleFirstPass(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_GroupThreadID,
+	uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 	uint2 CurPixel = uint2(dispatchThreadId.x % Res.x, dispatchThreadId.x / Res.x);
 
@@ -41,6 +42,7 @@ void DownScaleFirstPass(uint3 dispatchThreadId : SV_DispatchThreadID, uint3 grou
 			}
 		}
 		downScaled /= 16.0; // Average
+		HDRDownScale[CurPixel.xy] = downScaled; // Store the quarter resolution image
 		avgLum = dot(downScaled, LUM_FACTOR); // Calculate the lumenace value for this pixel
 	}
 	SharedPositions[groupThreadId.x] = avgLum; // Store in the group memory for further reduction
@@ -115,19 +117,19 @@ void DownScaleFirstPass(uint3 dispatchThreadId : SV_DispatchThreadID, uint3 grou
 	if (groupThreadId.x == 0)
 	{
 		// Calculate the average lumenance for this thread group
-		float finalAvgLum = avgLum;
-		finalAvgLum += dispatchThreadId.x + 256 < Domain ? SharedPositions[groupThreadId.x + 256] : avgLum;
-		finalAvgLum += dispatchThreadId.x + 512 < Domain ? SharedPositions[groupThreadId.x + 512] : avgLum;
-		finalAvgLum += dispatchThreadId.x + 768 < Domain ? SharedPositions[groupThreadId.x + 768] : avgLum;
-		finalAvgLum /= 1024.0;
+		float fFinalAvgLum = avgLum;
+		fFinalAvgLum += dispatchThreadId.x + 256 < Domain ? SharedPositions[groupThreadId.x + 256] : avgLum;
+		fFinalAvgLum += dispatchThreadId.x + 512 < Domain ? SharedPositions[groupThreadId.x + 512] : avgLum;
+		fFinalAvgLum += dispatchThreadId.x + 768 < Domain ? SharedPositions[groupThreadId.x + 768] : avgLum;
+		fFinalAvgLum /= 1024.0;
 
-		AverageLum[groupId.x] = finalAvgLum; // Write the final value into the 1D UAV which will be used on the next step
+		AverageLum[groupId.x] = fFinalAvgLum; // Write the final value into the 1D UAV which will be used on the next step
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
 // Second pass - convert the 1D average values into a single value
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
 
 #define MAX_GROUPS 64
 
@@ -136,7 +138,7 @@ groupshared float SharedAvgFinal[MAX_GROUPS];
 
 [numthreads(MAX_GROUPS, 1, 1)]
 void DownScaleSecondPass(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_GroupThreadID,
-	uint3 dispatchThreadId : SV_DispatchThreadID, uint groupIndex : SV_GroupIndex)
+	uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 	// Fill the shared memory with the 1D values
 	float avgLum = 0.0;
@@ -184,24 +186,23 @@ void DownScaleSecondPass(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_Gr
 	if (dispatchThreadId.x == 0)
 	{
 		// Calculate the average luminace
-		float finalLumValue = avgLum;
-		finalLumValue += dispatchThreadId.x + 16 < GroupSize ? SharedAvgFinal[dispatchThreadId.x + 16] : avgLum;
-		finalLumValue += dispatchThreadId.x + 32 < GroupSize ? SharedAvgFinal[dispatchThreadId.x + 32] : avgLum;
-		finalLumValue += dispatchThreadId.x + 48 < GroupSize ? SharedAvgFinal[dispatchThreadId.x + 48] : avgLum;
-		finalLumValue /= 64.0;
+		float fFinalLumValue = avgLum;
+		fFinalLumValue += dispatchThreadId.x + 16 < GroupSize ? SharedAvgFinal[dispatchThreadId.x + 16] : avgLum;
+		fFinalLumValue += dispatchThreadId.x + 32 < GroupSize ? SharedAvgFinal[dispatchThreadId.x + 32] : avgLum;
+		fFinalLumValue += dispatchThreadId.x + 48 < GroupSize ? SharedAvgFinal[dispatchThreadId.x + 48] : avgLum;
+		fFinalLumValue /= 64.0;
 
 		// Calculate the adaptive luminance
-		float adaptedAverageLum = lerp(PrevAvgLum[0], finalLumValue, Adaptation);
+		float fAdaptedAverageLum = lerp(PrevAvgLum[0], fFinalLumValue, Adaptation);
 
 		// Store the final value
-		AverageLum[0] = max(adaptedAverageLum, 0.0001);
-
+		AverageLum[0] = max(fAdaptedAverageLum, 0.0001);
 	}
 }
 
-//------------------------
+//--------------------------
 // Bloom compute shader
-//------------------------
+//--------------------------
 
 Texture2D<float4> HDRDownScaleTex : register(t0);
 StructuredBuffer<float> AvgLum : register(t1);

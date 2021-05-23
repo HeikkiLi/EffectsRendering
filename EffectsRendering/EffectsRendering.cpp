@@ -130,9 +130,9 @@ private:
 	float	mAdaptation = 1.0f;
 	
 	bool	mEnableBloom = true;
-	float	mBloomThresholdMax = 2.5f;
+	float	mBloomThresholdMax = 20.5f;
 	float	mBloomThreshold = 1.1f;
-	float	mBloomScaleMax = 2.0f;
+	float	mBloomScaleMax = 20.0f;
 	float	mBloomScale = 0.74f;
 };
 
@@ -371,7 +371,7 @@ void DeferredShaderApp::OnResize()
 		D3D11_RTV_DIMENSION_TEXTURE2D
 	};
 	md3dDevice->CreateRenderTargetView(mHDRTexture, &rtsvd, &mHDRRTV);
-	DX_SetDebugName(g_HDRRTV, "HDR Light Accumulation RTV");
+	DX_SetDebugName(mHDRRTV, "HDR Light Accumulation RTV");
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC dsrvd =
 	{
@@ -486,7 +486,7 @@ void DeferredShaderApp::Render()
 	
 
 	// clear render target view
-	float clearColor[4] = { 0.0, 0.0, 0.0, 0.0 };
+	float clearColor[4] = { 0.35, 0.35, 0.72, 0.0 };
 	md3dImmediateContext->ClearRenderTargetView(mEnablePostFX ? mHDRRTV : mRenderTargetView, clearColor);
 
 	// clear depth stencil view
@@ -690,6 +690,7 @@ void DeferredShaderApp::VisualizeFullScreenGBufferTexture()
 	// Cleanup
 	md3dImmediateContext->VSSetShader(NULL, NULL, 0);
 	md3dImmediateContext->PSSetShader(NULL, NULL, 0);
+	md3dImmediateContext->CSSetShader(NULL, NULL, 0);
 
 	ZeroMemory(arrViews, sizeof(arrViews));
 	md3dImmediateContext->PSSetShaderResources(0, 4, arrViews);

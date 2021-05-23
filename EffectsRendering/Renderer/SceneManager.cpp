@@ -75,7 +75,7 @@ bool SceneManager::Init(ID3D11Device* device, Camera* camera)
 
 	m_plane.Diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
 	m_plane.specExp = 10.0f;
-	m_plane.specIntensivity = 1.0f;
+	m_plane.specIntensivity = 2.0f;
 	planeData.materials[0] = m_plane;
 
 	Mesh* plane = new Mesh();
