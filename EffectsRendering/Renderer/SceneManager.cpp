@@ -185,7 +185,7 @@ bool SceneManager::Init(ID3D11Device* device, Camera* camera)
 	// Create the Sky object
 	mSky = new Sky();
 	std::string skyfileName = "..\\Assets\\grasscube1024.dds"; 
-	if (!mSky->Init(device, skyfileName, 5000.0f, 10.0f))
+	if (!mSky->Init(device, skyfileName, 5000.0f, 2.0f))
 	{
 		return false;
 	}

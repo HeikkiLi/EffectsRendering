@@ -46,6 +46,21 @@ bool Sky::Init(ID3D11Device* device, const std::string& cubemapFilename, float s
 	HRESULT hr;
 
 	mSunRadius = sunRadius;
+	MeshData sunMeshData;
+	GeometryGenerator::Instance()->CreateSphere(skySphereRadius, 32, 32, sunMeshData);
+
+	Material material;
+	material.Diffuse = XMFLOAT4(0.9f, 0.9f, 0.9f, 1.0f);
+	material.specExp = 10.0f;
+	material.specIntensivity = 1.0f;
+	sunMeshData.materials[0] = material;
+
+	mSunSphere = new Mesh();
+	mSunSphere->Create(device, sunMeshData);
+	XMMATRIX matTranslate = XMMatrixTranslation(0.0f, 0.0f, 10.0f);
+	XMMATRIX matScale = XMMatrixScaling(1.0f, 1.0f, 1.0f);
+	XMMATRIX matRot = XMMatrixIdentity();
+	mSunSphere->mWorld = matScale * matRot * matTranslate;
 
 	// load cubemap from file
 	mCubeMapSRV = TextureManager::Instance()->CreateTexture(cubemapFilename);
@@ -218,6 +233,12 @@ Sky::~Sky()
 	SAFE_RELEASE(mEmissiveVertexShader);
 	SAFE_RELEASE(mEmissiveVSLayout);
 	SAFE_RELEASE(mEmissivePixelShader);
+
+	if (mSunSphere != NULL)
+	{
+		mSunSphere->Destroy();
+		mSunSphere = NULL;
+	}
 }
 
 ID3D11ShaderResourceView* Sky::CubeMapSRV()
@@ -262,7 +283,6 @@ void Sky::Render(ID3D11DeviceContext* deviceContext, const Camera* camera, XMFLO
 	deviceContext->VSSetShader(mEmissiveVertexShader, NULL, 0);
 	deviceContext->PSSetShader(mEmissivePixelShader, NULL, 0);
 
-	// This is an over kill for rendering the sun but it works
 	mSunSphere->Render(deviceContext);
 
 	// Cleanup

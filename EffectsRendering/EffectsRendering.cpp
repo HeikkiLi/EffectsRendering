@@ -515,7 +515,11 @@ void DeferredShaderApp::Render()
 	mLightManager.DoLighting(md3dImmediateContext, &mGBuffer, mCamera);
 
 	// Render the sky
-	//mSceneManager.RenderSky(md3dImmediateContext, mDirLightDir, 2.0f * mDirLightColor);
+	XMFLOAT3 sunDir;
+	XMStoreFloat3(&sunDir, mDirLightDir);
+	XMFLOAT3 sunColor;
+	XMStoreFloat3(&sunColor, (2.0f * mDirLightColor));
+	mSceneManager.RenderSky(md3dImmediateContext, sunDir, sunColor);
 
 	if (mEnablePostFX)
 	{
