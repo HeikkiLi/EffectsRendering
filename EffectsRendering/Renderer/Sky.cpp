@@ -31,7 +31,7 @@ Sky::Sky()
 	mSkyVertexShaderCB = NULL;
 	mSkyNoDepthStencilMaskState = NULL;
 	mCullNone = NULL;
-	mSunRadius = 10.0f;
+	mSunRadius = 15.0f;
 
 	mEmissiveCB = NULL;
 	mEmissiveVertexShader = NULL;
@@ -47,7 +47,7 @@ bool Sky::Init(ID3D11Device* device, const std::string& cubemapFilename, float s
 
 	mSunRadius = sunRadius;
 	MeshData sunMeshData;
-	GeometryGenerator::Instance()->CreateSphere(skySphereRadius, 32, 32, sunMeshData);
+	GeometryGenerator::Instance()->CreateSphere(3.0f, 32, 32, sunMeshData);
 
 	Material material;
 	material.Diffuse = XMFLOAT4(0.9f, 0.9f, 0.9f, 1.0f);

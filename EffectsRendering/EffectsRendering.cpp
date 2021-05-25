@@ -170,7 +170,7 @@ DeferredShaderApp::DeferredShaderApp(HINSTANCE hInstance)
 	// init light values
 	mAmbientLowerColor = XMVectorSet(0.1f, 0.1f, 0.1f, 1.0f);
 	mAmbientUpperColor = XMVectorSet(0.6f, 0.6f, 0.6f, 1.0f);
-	mDirLightDir = XMVectorSet(-0.1, -0.4f, -0.9f, 1.0f);
+	mDirLightDir = XMVectorSet(0.101f, -0.183f, -0.978f, 1.0f);
 	mDirLightColor = XMVectorSet(0.8f, 0.8f, 0.8f, 1.0f);
 	mDirCastShadows = true;
 	mAntiFlickerOn = true;
