@@ -1,6 +1,8 @@
 Texture2D<float4> HDRTex		: register(t0);
 StructuredBuffer<float> AvgLum	: register(t1);
 Texture2D<float4> BloomTex		: register(t2);
+Texture2D<float4> DOFBlurTex	: register(t3);
+Texture2D<float> DepthTex		: register(t4);
 
 SamplerState PointSampler		: register(s0);
 SamplerState LinearSampler		: register(s1);
@@ -48,9 +50,26 @@ cbuffer FinalPassConstants : register(b0)
 	float MiddleGrey	: packoffset(c0);
 	float LumWhiteSqr	: packoffset(c0.y);
 	float BloomScale	: packoffset(c0.z);
+	float2 ProjValues : packoffset(c1);
+	float2 DOFFarValues : packoffset(c1.z);
 }
 
 static const float3 LUM_FACTOR = float3(0.299, 0.587, 0.114);
+
+float ConvertZToLinearDepth(float depth)
+{
+	float linearDepth = ProjValues.x / (depth + ProjValues.y);
+	return linearDepth;
+}
+
+float3 DistanceDOF(float3 colorFocus, float3 colorBlurred, float depth)
+{
+	// Find the depth based blur factor
+	float blurFactor = saturate((depth - DOFFarValues.x) * DOFFarValues.y);
+
+	// Lerp with the blurred color based on the CoC factor
+	return lerp(colorFocus, colorBlurred, blurFactor);
+}
 
 float3 ToneMapping(float3 HDRColor)
 {
@@ -67,6 +86,19 @@ float4 FinalPassPS(VS_OUTPUT In) : SV_TARGET
 {
 	// Get the color sample
 	float3 color = HDRTex.Sample(PointSampler, In.UV.xy).xyz;
+
+	// Distance DOF only on pixels that are not on the far plane
+	float depth = DepthTex.Sample(PointSampler, In.UV.xy);
+	if (depth < 1.0)
+	{
+		// Get the blurred color from the down scaled HDR texture
+		float3 colorBlurred = DOFBlurTex.Sample(LinearSampler, In.UV.xy).xyz;
+
+		// Convert the full resolution depth to linear depth
+		depth = ConvertZToLinearDepth(depth);
+
+		color = DistanceDOF(color, colorBlurred, depth);
+	}
 
 	// Add the bloom contribution
 	color += BloomScale * BloomTex.Sample(LinearSampler, In.UV.xy).xyz;
