@@ -23,21 +23,18 @@ IMPLEMENTED
 	- normal maps,  normal texture
 	- HDR, tonemapping and adaptation
 	- bloom
+	- DoF
 */
 
 
 /// TODO
 /*
-
 	- SSAO - Screen Space Ambient Occlusion
-	- skybox/sphere hdr texture map?
-	- skybox rotation bug
 	- SSR - Screen Space Reflections
 	- fog - Distance Based Fog
 	- sunray
 	- lens flare
 	- Bokeh
-	- DoF  and add to camera gui setting
 	- screenshot name timestamp and save to folder
 */
 
