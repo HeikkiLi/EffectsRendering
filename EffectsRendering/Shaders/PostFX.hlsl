@@ -49,8 +49,10 @@ cbuffer FinalPassConstants : register(b0)
 	// Tone mapping
 	float MiddleGrey	: packoffset(c0);
 	float LumWhiteSqr	: packoffset(c0.y);
+	// bloom
 	float BloomScale	: packoffset(c0.z);
-	float2 ProjValues : packoffset(c1);
+	// DoF
+	float2 ProjValues	: packoffset(c1);
 	float2 DOFFarValues : packoffset(c1.z);
 }
 

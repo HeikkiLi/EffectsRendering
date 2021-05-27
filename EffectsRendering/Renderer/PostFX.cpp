@@ -1,5 +1,6 @@
 #include "PostFX.h"
 
+#include "Camera.h"
 
 PostFX::PostFX() : mMiddleGrey(0.0025f), mWhite(1.5f), mBloomThreshold(2.0), mBloomScale(0.1f),
 	mDownScaleRT(NULL), mDownScaleSRV(NULL), mDownScaleUAV(NULL),
@@ -295,7 +296,7 @@ void PostFX::Release()
 	SAFE_RELEASE(mSampLinear);
 }
 
-void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11RenderTargetView* pLDRRTV)
+void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* depthSRV, ID3D11RenderTargetView* pLDRRTV, Camera* camera)
 {
 	// Constants
 	D3D11_MAPPED_SUBRESOURCE MappedResource;
@@ -332,7 +333,7 @@ void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11Sha
 	// Do the final pass
 	rt[0] = pLDRRTV;
 	pd3dImmediateContext->OMSetRenderTargets(1, rt, NULL);
-	FinalPass(pd3dImmediateContext, pHDRSRV);
+	FinalPass(pd3dImmediateContext, pHDRSRV, depthSRV, camera);
 
 	// Swap the previous frame average luminance
 	ID3D11Buffer* tempBuffer = mAvgLumBuffer;
@@ -346,7 +347,7 @@ void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11Sha
 	mPrevAvgLumSRV = tempSRV;
 }
 
-void PostFX::SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale, bool enableBloom)
+void PostFX::SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale, bool enableBloom, float DOFFarStart, float DOFFarRange)
 {
 	mMiddleGrey = middleGrey;
 	mWhite = white; 
@@ -354,6 +355,9 @@ void PostFX::SetParameters(float middleGrey, float white, float adaptation, floa
 	mBloomThreshold = bloomThreshold;
 	mBloomScale = bloomScale;
 	mEnableBloom = enableBloom;
+	
+	mDOFFarStart = DOFFarStart;
+	mDOFFarRangeRcp = 1.0f / max(DOFFarRange, 0.001f);
 }
 
 void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV)
@@ -469,10 +473,10 @@ void PostFX::Blur(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourc
 	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, NULL);
 }
 
-void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV)
+void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* depthSRV, Camera* camera)
 {
-	ID3D11ShaderResourceView* arrViews[3] = { pHDRSRV, mAvgLumSRV, mBloomSRV };
-	pd3dImmediateContext->PSSetShaderResources(0, 3, arrViews);
+	ID3D11ShaderResourceView* arrViews[6] = { pHDRSRV, mAvgLumSRV, mBloomSRV, mDownScaleSRV, depthSRV };
+	pd3dImmediateContext->PSSetShaderResources(0, 6, arrViews);
 
 	// Constants
 	D3D11_MAPPED_SUBRESOURCE MappedResource;
@@ -483,6 +487,11 @@ void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 	pFinalPass->LumWhiteSqr *= pFinalPass->MiddleGrey; // Scale by the middle grey value
 	pFinalPass->LumWhiteSqr *= pFinalPass->LumWhiteSqr; // Square
 	pFinalPass->BloomScale = mEnableBloom? mBloomScale: 0.0f;
+	float fQ = camera->GetFarZ() / (camera->GetFarZ() - camera->GetNearZ());
+	pFinalPass->ProjectionValues[0] = -camera->GetNearZ() * fQ;
+	pFinalPass->ProjectionValues[1] = -fQ;
+	pFinalPass->DOFFarStart = mDOFFarStart;
+	pFinalPass->DOFFarRangeRcp = mDOFFarRangeRcp;
 	pd3dImmediateContext->Unmap(mFinalPassCB, 0);
 	ID3D11Buffer* arrConstBuffers[1] = { mFinalPassCB };
 	pd3dImmediateContext->PSSetConstantBuffers(0, 1, arrConstBuffers);
@@ -503,7 +512,7 @@ void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 
 	// Cleanup
 	ZeroMemory(arrViews, sizeof(arrViews));
-	pd3dImmediateContext->PSSetShaderResources(0, 3, arrViews);
+	pd3dImmediateContext->PSSetShaderResources(0, 6, arrViews);
 	ZeroMemory(arrConstBuffers, sizeof(arrConstBuffers));
 	pd3dImmediateContext->PSSetConstantBuffers(0, 1, arrConstBuffers);
 	pd3dImmediateContext->VSSetShader(NULL, NULL, 0);

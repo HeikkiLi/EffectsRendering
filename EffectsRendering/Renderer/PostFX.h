@@ -2,6 +2,8 @@
 
 #include "Util.h"
 
+class Camera;
+
 class PostFX
 {
 public:
@@ -12,9 +14,9 @@ public:
 	void Release();
 
 	// do post processing
-	void PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11RenderTargetView* pLDRRTV);
+	void PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* depthSRV, ID3D11RenderTargetView* pLDRRTV, Camera* camera);
 	
-	void SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale, bool enableBloom);
+	void SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale, bool enableBloom, float DOFFarStart, float DOFFarRange);
 
 private:
 
@@ -28,7 +30,7 @@ private:
 	void Blur(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pInput, ID3D11UnorderedAccessView* pOutput);
 
 	// Final pass composite all post processing calculations
-	void FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV);
+	void FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* depthSRV, Camera* camera);
 
 	// Downscaled scene texture
 	ID3D11Texture2D* mDownScaleRT;
@@ -69,6 +71,8 @@ private:
 	float	mBloomThreshold;
 	float	mBloomScale;
 	bool	mEnableBloom;
+	float	mDOFFarStart;
+	float	mDOFFarRangeRcp;
 
 	typedef struct
 	{
@@ -78,7 +82,7 @@ private:
 		UINT groupSize;
 		float adaptation;
 		float bloomThreshold;
-		UINT pad[2];
+		float ProjectionValues[2];
 	} TDownScaleCB;
 	ID3D11Buffer* mDownScaleCB;
 
@@ -88,6 +92,9 @@ private:
 		float LumWhiteSqr;
 		float BloomScale;
 		UINT pad;
+		float ProjectionValues[2];
+		float DOFFarStart;
+		float DOFFarRangeRcp;
 	} TFinalPassCB;
 	ID3D11Buffer* mFinalPassCB;
 

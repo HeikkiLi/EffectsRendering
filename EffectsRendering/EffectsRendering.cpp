@@ -135,6 +135,12 @@ private:
 	float	mBloomThreshold = 1.1f;
 	float	mBloomScaleMax = 6.0f;
 	float	mBloomScale = 0.74f;
+
+	float	mDOFFarStartMax = 400.0f;
+	float	mDOFFarStart = 40.0f;
+	float	mDOFFarRangeMax = 150.0f;
+	float	mDOFFarRange = 60.0f;
+
 };
 
 
@@ -455,7 +461,7 @@ void DeferredShaderApp::Update(float dt)
 		// Never use a value higher or equal to 1 since that means no adaptation at all (keeps the old value)
 		adaptationNorm = min(mAdaptation < 0.0001f ? 1.0f : dt / mAdaptation, 0.9999f);
 	}
-	mPostFX.SetParameters(mMiddleGrey, mWhite, adaptationNorm, mBloomThreshold, mBloomScale, mEnableBloom);
+	mPostFX.SetParameters(mMiddleGrey, mWhite, adaptationNorm, mBloomThreshold, mBloomScale, mEnableBloom, mDOFFarStart, mDOFFarRange);
 
 }
 
@@ -524,7 +530,7 @@ void DeferredShaderApp::Render()
 	if (mEnablePostFX)
 	{
 		// Do post processing into the LDR render target
-		mPostFX.PostProcessing(md3dImmediateContext, mHDRSRV, mRenderTargetView);
+		mPostFX.PostProcessing(md3dImmediateContext, mHDRSRV, mGBuffer.GetDepthView(), mRenderTargetView, mCamera);
 		md3dImmediateContext->OMSetRenderTargets(1, &mRenderTargetView, mGBuffer.GetDepthDSV());
 	}
 
@@ -771,8 +777,13 @@ void DeferredShaderApp::RenderGUI()
 				ImGui::SliderFloat("Adaptation factor", &mAdaptation, 1.0f, mAdaptationMax, "%.1f");
 				
 				ImGui::Checkbox("Enable Bloom", &mEnableBloom);
-				ImGui::SliderFloat("Bloom Threshold", &mBloomThreshold, .1f, mBloomThresholdMax, "%.01f");
-				ImGui::SliderFloat("Bloom Scale", &mBloomScale, .1f, mBloomScaleMax, "%.01f");
+				ImGui::TextWrapped("Bloom");
+				ImGui::SliderFloat("Threshold", &mBloomThreshold, .1f, mBloomThresholdMax, "%.01f");
+				ImGui::SliderFloat("Scale", &mBloomScale, .1f, mBloomScaleMax, "%.01f");
+
+				ImGui::TextWrapped("Depth of Field");
+				ImGui::SliderFloat("Start", &mDOFFarStart, 0.0f, mDOFFarStartMax, "%.1f");
+				ImGui::SliderFloat("Range", &mDOFFarRange, .1f, mDOFFarRangeMax, "%.1f");
 			}
 
 			ImGui::End();
