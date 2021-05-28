@@ -43,34 +43,48 @@ bool SceneManager::Init(ID3D11Device* device, Camera* camera)
 	mMeshes.clear();
 
 	// Load the models
-	MeshData meshData;
-	if (!ObjLoader::Instance()->LoadToMesh("..\\Assets\\bunny.obj",  "..\\Assets\\", meshData))
+	
+	MeshData pillarMData;
+	if (!ObjLoader::Instance()->LoadToMesh("..\\Assets\\pillar.obj", "..\\Assets\\", pillarMData))
 		return false;
 
-	Material material;
-	material.Diffuse = XMFLOAT4(0.9f, 0.9f, 0.9f, 1.0f);
-	material.specExp = 10.0f;
-	material.specIntensivity = 1.0f;
-	meshData.materials[0] = material;
+	Material m_pillar;
+	m_pillar.diffuseTexture = "..\\Assets\\factory_brick_1k\\factory_brick_diff_1k.jpg";
+	TextureManager::Instance()->CreateTexture(m_pillar.diffuseTexture);
 
-	Mesh* mesh = new Mesh();
-	mesh->Create(device, meshData);
-	XMMATRIX matTranslate = XMMatrixTranslation(0.0f, 0.0f, 10.0f);
-	XMMATRIX matScale = XMMatrixScaling(1.0f, 1.0f, 1.0f);
-	XMMATRIX matRot = XMMatrixRotationY(M_PI);
-	mesh->mWorld = matScale  * matRot * matTranslate;
-	mMeshes.push_back(mesh);
+	//m_pillar.normalTexture = "..\\Assets\\factory_brick_1k\\factory_brick_nor_1k.jpg";
+	//TextureManager::Instance()->CreateTexture(m_pillar.normalTexture);
+
+	m_pillar.Diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+	m_pillar.specExp = 10.0f;
+	m_pillar.specIntensivity = 2.0f;
+	pillarMData.materials[0] = m_pillar;
+
+	for (int i = 0; i < 5; i++)
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			Mesh* pillarMesh = new Mesh();
+			pillarMesh->Create(device, pillarMData);
+			XMMATRIX matTranslate = XMMatrixTranslation(-10.0f + j*5.0f, 0.0f, 10.0f + i * 5.0f);
+			XMMATRIX matScale = XMMatrixScaling(0.1f, 0.1f, 0.1f);
+			XMMATRIX matRot = XMMatrixRotationY(M_PI);
+			pillarMesh->mWorld = matScale * matRot * matTranslate;
+			mMeshes.push_back(pillarMesh);
+		}
+	}
+	
 
 	// plane
 	MeshData planeData;
-	GeometryGenerator::Instance()->CreateBox(10.0, 0.1, 10.0, planeData);
+	GeometryGenerator::Instance()->CreateBox(80.0, 0.1, 80.0, planeData);
 
 	Material m_plane;
 	
-	m_plane.diffuseTexture = "..\\Assets\\cobblestone_floor_03_1k\\cobblestone_floor_03_diff_1k.jpg";
+	m_plane.diffuseTexture = "..\\Assets\\floor_tiles_08_1k\\floor_tiles_08_diff_1k.jpg";
 	TextureManager::Instance()->CreateTexture(m_plane.diffuseTexture);
 	
-	m_plane.normalTexture = "..\\Assets\\cobblestone_floor_03_1k\\cobblestone_floor_03_nor_1k.jpg";
+	m_plane.normalTexture = "..\\Assets\\floor_tiles_08_1k\\floor_tiles_08_nor_1k.jpg";
 	TextureManager::Instance()->CreateTexture(m_plane.normalTexture);
 
 	m_plane.Diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
@@ -80,48 +94,13 @@ bool SceneManager::Init(ID3D11Device* device, Camera* camera)
 
 	Mesh* plane = new Mesh();
 	plane->Create(device, planeData);
-	matTranslate = XMMatrixTranslation(0.0f, 0.0f, 10.0f);
-	matScale = XMMatrixScaling(1.0f, 1.0f, 1.0f);
-	matRot = XMMatrixIdentity();
+	XMMATRIX matTranslate = XMMatrixTranslation(0.0f, 0.0f, 10.0f);
+	XMMATRIX matScale = XMMatrixScaling(1.0f, 1.0f, 1.0f);
+	XMMATRIX matRot = XMMatrixIdentity();
 	plane->mWorld = matScale * matRot * matTranslate;
 	mMeshes.push_back(plane);
 
-	// sphere mesh
-	MeshData sphereData;
-	GeometryGenerator::Instance()->CreateSphere(1.0f, 32, 32, sphereData);
-
-	Material m_sphere;
-
-	m_sphere.diffuseTexture = "..\\Assets\\factory_brick_1k\\factory_brick_diff_1k.jpg";
-	TextureManager::Instance()->CreateTexture(m_sphere.diffuseTexture);
-
-	m_sphere.normalTexture = "..\\Assets\\factory_brick_1k\\factory_brick_nor_1k.jpg";
-	TextureManager::Instance()->CreateTexture(m_sphere.normalTexture);
-
-	m_sphere.Diffuse = XMFLOAT4(0.9f, 0.0f, 0.0f, 1.0f);
-	m_sphere.specExp = 10.0f;
-	m_sphere.specIntensivity = 1.0f;
-	sphereData.materials[0] = m_sphere;
-
-	// sphere 1
-	Mesh* sphere1 = new Mesh();
-	sphere1->Create(device, sphereData);
-	matTranslate = XMMatrixTranslation(3.0f, 1.0f, 10.0f);
-	matScale = XMMatrixScaling(1.0f, 1.0f, 1.0f);
-	matRot = XMMatrixRotationY(M_PI);
-	sphere1->mWorld = matScale * matRot * matTranslate;
-	mMeshes.push_back(sphere1);
-
-	// sphere 2
-	Mesh* sphere2 = new Mesh();
-	m_sphere.Diffuse = XMFLOAT4(0.1f, 0.0f, 0.8f, 1.0f);
-	sphereData.materials[0] = m_sphere;
-	sphere2->Create(device, sphereData);
-	matTranslate = XMMatrixTranslation(-3.0f, 1.0f, 10.0f);
-	matScale = XMMatrixScaling(1.0f, 1.0f, 1.0f);
-	matRot = XMMatrixRotationY(M_PI);
-	sphere2->mWorld = matScale * matRot * matTranslate;
-	mMeshes.push_back(sphere2);
+	
 		
 	// Create constant buffers
 	D3D11_BUFFER_DESC cbDesc;
