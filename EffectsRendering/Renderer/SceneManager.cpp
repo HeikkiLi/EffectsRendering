@@ -77,7 +77,7 @@ bool SceneManager::Init(ID3D11Device* device, Camera* camera)
 
 	// plane
 	MeshData planeData;
-	GeometryGenerator::Instance()->CreateBox(80.0, 0.1, 80.0, planeData);
+	GeometryGenerator::Instance()->CreateGrid(80.0, 80.0, 20.0, 20.0, planeData);
 
 	Material m_plane;
 	
