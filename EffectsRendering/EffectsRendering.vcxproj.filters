@@ -217,9 +217,12 @@
     <None Include="Shaders\Emissive.hlsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\Bokeh.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\Bokeh.hlsl">
+    <FxCompile Include="Shaders\BokehCS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

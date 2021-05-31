@@ -16,7 +16,8 @@ public:
 	// do post processing
 	void PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* depthSRV, ID3D11RenderTargetView* pLDRRTV, Camera* camera);
 	
-	void SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale, bool enableBloom, float DOFFarStart, float DOFFarRange);
+	void SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale, bool enableBloom, float DOFFarStart, float DOFFarRange,
+		float bokehLumThreshold, float bokehBlurThreshold, float bokehRadiusScale, float bokehColorScale);
 
 private:
 
@@ -29,8 +30,12 @@ private:
 	// Apply a gaussian blur to the input and store it in the output
 	void Blur(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pInput, ID3D11UnorderedAccessView* pOutput);
 
+	void BokehHightlightScan(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* pDepthSRV);
+
 	// Final pass composite all post processing calculations
 	void FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* depthSRV, Camera* camera);
+
+	void BokehRender(ID3D11DeviceContext* pd3dImmediateContext);
 
 	// Downscaled scene texture
 	ID3D11Texture2D* mDownScaleRT;
@@ -62,6 +67,18 @@ private:
 	ID3D11UnorderedAccessView* mPrevAvgLumUAV;
 	ID3D11ShaderResourceView* mPrevAvgLumSRV;
 
+	// Bokeh buffer
+	ID3D11Buffer* mBokehBuffer;
+	ID3D11UnorderedAccessView* mBokehUAV;
+	ID3D11ShaderResourceView* mBokehSRV;
+
+	// Bokeh indirect draw buffer
+	ID3D11Buffer* mBokehIndirectDrawBuffer;
+
+	// Bokeh highlight texture view and blend state
+	ID3D11ShaderResourceView* mBokehTexView;
+	ID3D11BlendState* mAddativeBlendState;
+
 	UINT	mWidth;
 	UINT	mHeight;
 	UINT	mDownScaleGroups;
@@ -73,6 +90,10 @@ private:
 	bool	mEnableBloom;
 	float	mDOFFarStart;
 	float	mDOFFarRangeRcp;
+	float	mBokehLumThreshold;
+	float	mBokehBlurThreshold;
+	float	mBokehRadiusScale;
+	float	mBokehColorScale;
 
 	typedef struct
 	{
@@ -109,6 +130,29 @@ private:
 	} TBlurCB;
 	ID3D11Buffer* mBlurCB;
 
+	typedef struct
+	{
+		UINT Width;
+		UINT Height;
+		float ProjectionValues[2];
+		float DOFFarStart;
+		float DOFFarRangeRcp;
+		float MiddleGrey;
+		float LumWhiteSqr;
+		float BokehBlurThreshold;
+		float BokehLumThreshold;
+		float RadiusScale;
+		float ColorScale;
+	} TBokehHightlightScanCB;
+	ID3D11Buffer* mBokehHightlightScanCB;
+
+	typedef struct
+	{
+		float AspectRatio[2];
+		UINT pad[2];
+	} TBokehRenderCB;
+	ID3D11Buffer* mBokehRenderCB;
+
 	ID3D11SamplerState* mSampPoint;
 	ID3D11SamplerState* mSampLinear;
 
@@ -120,4 +164,8 @@ private:
 	ID3D11ComputeShader*	mVerticalBlurCS;
 	ID3D11VertexShader*		mFullScreenQuadVS;
 	ID3D11PixelShader*		mFinalPassPS;
+	ID3D11ComputeShader*	mBokehHighlightSearchCS;
+	ID3D11VertexShader*		mBokehVS;
+	ID3D11GeometryShader*	mBokehGS;
+	ID3D11PixelShader*		mBokehPS;
 };

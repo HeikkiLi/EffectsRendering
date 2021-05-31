@@ -11,7 +11,9 @@ PostFX::PostFX() : mMiddleGrey(0.0025f), mWhite(1.5f), mBloomThreshold(2.0), mBl
 	mPrevAvgLumBuffer(NULL), mPrevAvgLumUAV(NULL), mPrevAvgLumSRV(NULL),
 	mDownScaleFirstPassCS(NULL), mDownScaleSecondPassCS(NULL), mFullScreenQuadVS(NULL),
 	mFinalPassPS(NULL), mSampPoint(NULL), mBloomRevealCS(NULL),
-	mHorizontalBlurCS(NULL), mVerticalBlurCS(NULL), mSampLinear(NULL)
+	mHorizontalBlurCS(NULL), mVerticalBlurCS(NULL), mSampLinear(NULL),
+	mBokehHighlightSearchCS(NULL), mBokehVS(NULL), mBokehGS(NULL), mBokehPS(NULL), mBokehTexView(NULL),
+	mAddativeBlendState(NULL), mBokehHightlightScanCB(NULL), mBokehRenderCB(NULL)
 {
 	mTempRT[0] = NULL;
 	mTempRT[1] = NULL;
@@ -294,6 +296,14 @@ void PostFX::Release()
 	SAFE_RELEASE(mVerticalBlurCS);
 	SAFE_RELEASE(mSampPoint);
 	SAFE_RELEASE(mSampLinear);
+	SAFE_RELEASE(mBokehHighlightSearchCS);
+	SAFE_RELEASE(mBokehVS);
+	SAFE_RELEASE(mBokehGS);
+	SAFE_RELEASE(mBokehPS);
+	SAFE_RELEASE(mBokehTexView);
+	SAFE_RELEASE(mAddativeBlendState);
+	SAFE_RELEASE(mBokehHightlightScanCB);
+	SAFE_RELEASE(mBokehRenderCB);
 }
 
 void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* depthSRV, ID3D11RenderTargetView* pLDRRTV, Camera* camera)
@@ -347,7 +357,8 @@ void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11Sha
 	mPrevAvgLumSRV = tempSRV;
 }
 
-void PostFX::SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale, bool enableBloom, float DOFFarStart, float DOFFarRange)
+void PostFX::SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale, bool enableBloom, float DOFFarStart, float DOFFarRange,
+	float bokehLumThreshold, float bokehBlurThreshold, float bokehRadiusScale, float bokehColorScale)
 {
 	mMiddleGrey = middleGrey;
 	mWhite = white; 
@@ -358,6 +369,11 @@ void PostFX::SetParameters(float middleGrey, float white, float adaptation, floa
 	
 	mDOFFarStart = DOFFarStart;
 	mDOFFarRangeRcp = 1.0f / max(DOFFarRange, 0.001f);
+
+	mBokehLumThreshold = bokehLumThreshold;
+	mBokehBlurThreshold = bokehBlurThreshold;
+	mBokehRadiusScale = bokehRadiusScale;
+	mBokehColorScale = bokehColorScale;
 }
 
 void PostFX::DownScale(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV)
@@ -473,6 +489,10 @@ void PostFX::Blur(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourc
 	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, NULL);
 }
 
+void PostFX::BokehHightlightScan(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* pDepthSRV)
+{
+}
+
 void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* depthSRV, Camera* camera)
 {
 	ID3D11ShaderResourceView* arrViews[6] = { pHDRSRV, mAvgLumSRV, mBloomSRV, mDownScaleSRV, depthSRV };
@@ -517,4 +537,8 @@ void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 	pd3dImmediateContext->PSSetConstantBuffers(0, 1, arrConstBuffers);
 	pd3dImmediateContext->VSSetShader(NULL, NULL, 0);
 	pd3dImmediateContext->PSSetShader(NULL, NULL, 0);
+}
+
+void PostFX::BokehRender(ID3D11DeviceContext* pd3dImmediateContext)
+{
 }
