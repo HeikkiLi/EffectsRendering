@@ -1,6 +1,7 @@
 #include "PostFX.h"
 
 #include "Camera.h"
+#include "TextureManager.h"
 
 PostFX::PostFX() : mMiddleGrey(0.0025f), mWhite(1.5f), mBloomThreshold(2.0), mBloomScale(0.1f),
 	mDownScaleRT(NULL), mDownScaleSRV(NULL), mDownScaleUAV(NULL),
@@ -161,6 +162,36 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	V_RETURN(device->CreateShaderResourceView(mPrevAvgLumBuffer, &dsrvd, &mPrevAvgLumSRV));
 	DX_SetDebugName(mPrevAvgLumSRV, "PostFX - Previous Average Luminance SRV");
 
+	// Allocate Bokeh Buffer
+	const UINT nMaxBokehInst = 4056;
+	bufferDesc.StructureByteStride = 7 * sizeof(float);
+	bufferDesc.ByteWidth = nMaxBokehInst * bufferDesc.StructureByteStride;
+	//bufferDesc.BindFlags |= D3D11_BIND_VERTEX_BUFFER;
+	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mBokehBuffer));
+	DX_SetDebugName(mBokehBuffer, "PostFX - Bokeh Buffer");
+
+	DescUAV.Buffer.NumElements = nMaxBokehInst;
+	DescUAV.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_APPEND;
+	V_RETURN(device->CreateUnorderedAccessView(mBokehBuffer, &DescUAV, &mBokehUAV));
+	DX_SetDebugName(mBokehUAV, "PostFX - Bokeh UAV");
+
+	dsrvd.Buffer.NumElements = nMaxBokehInst;
+	V_RETURN(device->CreateShaderResourceView(mBokehBuffer, &dsrvd, &mBokehSRV));
+	DX_SetDebugName(mBokehSRV, "PostFX - Bokeh SRV");
+
+	ZeroMemory(&bufferDesc, sizeof(bufferDesc));
+	bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
+	bufferDesc.ByteWidth = 16;
+
+	D3D11_SUBRESOURCE_DATA initData;
+	UINT bufferInit[4] = { 0, 1, 0, 0 };
+	initData.pSysMem = bufferInit;
+	initData.SysMemPitch = 0;
+	initData.SysMemSlicePitch = 0;
+
+	V_RETURN(device->CreateBuffer(&bufferDesc, &initData, &mBokehIndirectDrawBuffer));
+	DX_SetDebugName(mBokehIndirectDrawBuffer, "PostFX - Bokeh Indirect Draw Buffer");
+
 	// allocate constant buffer
 	ZeroMemory(&bufferDesc, sizeof(bufferDesc));
 	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
@@ -177,6 +208,14 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 	bufferDesc.ByteWidth = sizeof(TBlurCB);
 	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mBlurCB));
 	DX_SetDebugName(mBlurCB, "PostFX - Blur CB");
+
+	bufferDesc.ByteWidth = sizeof(TBokehHightlightScanCB);
+	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mBokehHightlightScanCB));
+	DX_SetDebugName(mBokehHightlightScanCB, "PostFX - Bokeh Hightlight Scan CB");
+
+	bufferDesc.ByteWidth = sizeof(TBokehRenderCB);
+	V_RETURN(device->CreateBuffer(&bufferDesc, NULL, &mBokehRenderCB));
+	DX_SetDebugName(mBokehRenderCB, "PostFX - Bokeh Render CB");
 
 	///////////////////////////////////////
 	// Compile the shaders               //
@@ -244,6 +283,57 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 		pShaderBlob->GetBufferSize(), NULL, &mFinalPassPS));
 	DX_SetDebugName(mFinalPassPS, "Post FX - Final Pass PS");
 	SAFE_RELEASE(pShaderBlob);
+
+	///////////////////
+	// Bokeh shaders //
+	///////////////////
+	WCHAR bokehCSSrc[MAX_PATH] = L"..\\EffectsRendering\\Shaders\\BokehCS.hlsl";
+
+	V_RETURN(CompileShader(bokehCSSrc, NULL, "HighlightScan", "cs_5_0", dwShaderFlags, &pShaderBlob));
+	V_RETURN(device->CreateComputeShader(pShaderBlob->GetBufferPointer(),
+		pShaderBlob->GetBufferSize(), NULL, &mBokehHighlightSearchCS));
+	DX_SetDebugName(mBokehHighlightSearchCS, "Post FX - Bokeh Highlight Scan CS");
+	SAFE_RELEASE(pShaderBlob);
+
+	WCHAR bokehSrc[MAX_PATH] = L"..\\EffectsRendering\\Shaders\\Bokeh.hlsl";
+
+	V_RETURN(CompileShader(bokehSrc, NULL, "BokehVS", "vs_5_0", dwShaderFlags, &pShaderBlob));
+	V_RETURN(device->CreateVertexShader(pShaderBlob->GetBufferPointer(),
+		pShaderBlob->GetBufferSize(), NULL, &mBokehVS));
+	DX_SetDebugName(mBokehVS, "Post FX - Bokeh VS");
+	SAFE_RELEASE(pShaderBlob);
+
+	V_RETURN(CompileShader(bokehSrc, NULL, "BokehGS", "gs_5_0", dwShaderFlags, &pShaderBlob));
+	V_RETURN(device->CreateGeometryShader(pShaderBlob->GetBufferPointer(),
+		pShaderBlob->GetBufferSize(), NULL, &mBokehGS));
+	DX_SetDebugName(mBokehGS, "Post FX - Bokeh GS");
+	SAFE_RELEASE(pShaderBlob);
+
+	V_RETURN(CompileShader(bokehSrc, NULL, "BokehPS", "ps_5_0", dwShaderFlags, &pShaderBlob));
+	V_RETURN(device->CreatePixelShader(pShaderBlob->GetBufferPointer(),
+		pShaderBlob->GetBufferSize(), NULL, &mBokehPS));
+	DX_SetDebugName(mBokehPS, "Post FX - Bokeh PS");
+	SAFE_RELEASE(pShaderBlob);
+
+	// Load the bokeh highlight texture
+	mBokehTexView = TextureManager::Instance()->CreateTexture("..\\Assets\\Bokeh.dds");
+	DX_SetDebugName(mBokehPS, "Post FX - Bokeh.dds");
+
+	// Blend state for the bokeh highlights
+	D3D11_BLEND_DESC descBlend;
+	descBlend.AlphaToCoverageEnable = FALSE;
+	descBlend.IndependentBlendEnable = FALSE;
+	const D3D11_RENDER_TARGET_BLEND_DESC defaultRenderTargetBlendDesc =
+	{
+		TRUE,
+		D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD,
+		D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD,
+		D3D11_COLOR_WRITE_ENABLE_ALL,
+	};
+	for (UINT i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
+		descBlend.RenderTarget[i] = defaultRenderTargetBlendDesc;
+	V_RETURN(device->CreateBlendState(&descBlend, &mAddativeBlendState));
+	DX_SetDebugName(mAddativeBlendState, "Post FX - Addative Blending BS");
 
 	// linear and point samplers
 	D3D11_SAMPLER_DESC samDesc;
