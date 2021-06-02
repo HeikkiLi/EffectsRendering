@@ -317,7 +317,7 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 
 	// Load the bokeh highlight texture
 	mBokehTexView = TextureManager::Instance()->CreateTexture("..\\Assets\\Bokeh.dds");
-	DX_SetDebugName(mBokehPS, "Post FX - Bokeh.dds");
+	DX_SetDebugName(mBokehTexView, "Post FX - Bokeh.dds");
 
 	// Blend state for the bokeh highlights
 	D3D11_BLEND_DESC descBlend;

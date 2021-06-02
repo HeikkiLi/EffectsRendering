@@ -138,6 +138,14 @@ private:
 	float	mDOFFarRangeMax = 150.0f;
 	float	mDOFFarRange = 60.0f;
 
+	float mBokehLumThresholdMax = 25.0f;
+	float mBokehLumThreshold = 7.65f;
+	float mBokehBlurThreshold = 0.43f;
+	float mBokehRadiusScaledMax = 0.1;
+	float mBokehRadiusScale = 0.05;
+	float mBokehColorScaleMax = 0.25f;
+	float mBokehColorScale = 0.05f;
+
 };
 
 
@@ -458,7 +466,11 @@ void DeferredShaderApp::Update(float dt)
 		// Never use a value higher or equal to 1 since that means no adaptation at all (keeps the old value)
 		adaptationNorm = min(mAdaptation < 0.0001f ? 1.0f : dt / mAdaptation, 0.9999f);
 	}
-	mPostFX.SetParameters(mMiddleGrey, mWhite, adaptationNorm, mBloomThreshold, mBloomScale, mEnableBloom, mDOFFarStart, mDOFFarRange);
+	mPostFX.SetParameters(mMiddleGrey, mWhite, adaptationNorm,
+							mBloomThreshold, mBloomScale, mEnableBloom, 
+							mDOFFarStart, mDOFFarRange,
+							mBokehLumThreshold, mBokehBlurThreshold, mBokehRadiusScale,
+							mBokehColorScale);
 
 }
 
