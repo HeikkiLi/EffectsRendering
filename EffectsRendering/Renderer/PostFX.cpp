@@ -317,7 +317,6 @@ bool PostFX::Init(ID3D11Device* device, UINT width, UINT height)
 
 	// Load the bokeh highlight texture
 	mBokehTexView = TextureManager::Instance()->CreateTexture("..\\Assets\\Bokeh.dds");
-	DX_SetDebugName(mBokehTexView, "Post FX - Bokeh.dds");
 
 	// Blend state for the bokeh highlights
 	D3D11_BLEND_DESC descBlend;
@@ -390,7 +389,6 @@ void PostFX::Release()
 	SAFE_RELEASE(mBokehVS);
 	SAFE_RELEASE(mBokehGS);
 	SAFE_RELEASE(mBokehPS);
-	SAFE_RELEASE(mBokehTexView);
 	SAFE_RELEASE(mAddativeBlendState);
 	SAFE_RELEASE(mBokehHightlightScanCB);
 	SAFE_RELEASE(mBokehRenderCB);
@@ -408,6 +406,9 @@ void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11Sha
 	pDownScale->groupSize = mDownScaleGroups;
 	pDownScale->adaptation = mAdaptation;
 	pDownScale->bloomThreshold = mBloomThreshold;
+	float fQ = camera->GetFarZ() / (camera->GetFarZ() - camera->GetNearZ());
+	pDownScale->ProjectionValues[0] = -camera->GetNearZ() * fQ;
+	pDownScale->ProjectionValues[1] = -fQ;
 	pd3dImmediateContext->Unmap(mDownScaleCB, 0);
 	ID3D11Buffer* arrConstBuffers[1] = { mDownScaleCB };
 	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
@@ -421,19 +422,22 @@ void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11Sha
 	{
 		// Bloom
 		Bloom(pd3dImmediateContext);
-
-		// Blur the bloom values
-		Blur(pd3dImmediateContext, mTempSRV[0], mBloomUAV);
 	}
 
 	// Cleanup
 	ZeroMemory(&arrConstBuffers, sizeof(arrConstBuffers));
 	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
 
+	// Scan for the bokeh highlights
+	BokehHightlightScan(pd3dImmediateContext, pHDRSRV, depthSRV);
+
 	// Do the final pass
 	rt[0] = pLDRRTV;
 	pd3dImmediateContext->OMSetRenderTargets(1, rt, NULL);
 	FinalPass(pd3dImmediateContext, pHDRSRV, depthSRV, camera);
+
+	// Draw the bokeh highlights on top of the image
+	BokehRender(pd3dImmediateContext);
 
 	// Swap the previous frame average luminance
 	ID3D11Buffer* tempBuffer = mAvgLumBuffer;
@@ -533,6 +537,9 @@ void PostFX::Bloom(ID3D11DeviceContext* pd3dImmediateContext)
 	pd3dImmediateContext->CSSetShaderResources(0, 2, arrViews);
 	ZeroMemory(arrUAVs, sizeof(arrUAVs));
 	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, NULL);
+
+	// Blur the bloom values
+	Blur(pd3dImmediateContext, mTempSRV[0], mBloomUAV);
 }
 
 void PostFX::Blur(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pInput, ID3D11UnorderedAccessView* pOutput)
