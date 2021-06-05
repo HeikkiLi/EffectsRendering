@@ -429,7 +429,7 @@ void PostFX::PostProcessing(ID3D11DeviceContext* pd3dImmediateContext, ID3D11Sha
 	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
 
 	// Scan for the bokeh highlights
-	BokehHightlightScan(pd3dImmediateContext, pHDRSRV, depthSRV);
+	BokehHightlightScan(pd3dImmediateContext, pHDRSRV, depthSRV, camera);
 
 	// Do the final pass
 	rt[0] = pLDRRTV;
@@ -586,8 +586,53 @@ void PostFX::Blur(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourc
 	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, NULL);
 }
 
-void PostFX::BokehHightlightScan(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* pDepthSRV)
+void PostFX::BokehHightlightScan(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* pDepthSRV, Camera* camera)
 {
+	D3D11_MAPPED_SUBRESOURCE MappedResource;
+	pd3dImmediateContext->Map(mBokehHightlightScanCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource);
+	TBokehHightlightScanCB* pBokehHightlightScan = (TBokehHightlightScanCB*)MappedResource.pData;
+	pBokehHightlightScan->Width = mWidth;
+	pBokehHightlightScan->Height = mHeight;
+	float fQ = camera->GetFarZ() / (camera->GetFarZ() - camera->GetNearZ());
+	pBokehHightlightScan->ProjectionValues[0] = -camera->GetNearZ() * fQ;
+	pBokehHightlightScan->ProjectionValues[1] = -fQ;
+	pBokehHightlightScan->DOFFarStart = mDOFFarStart;
+	pBokehHightlightScan->DOFFarRangeRcp = mDOFFarRangeRcp;
+	pBokehHightlightScan->MiddleGrey = mMiddleGrey;
+	pBokehHightlightScan->LumWhiteSqr = mWhite;
+	pBokehHightlightScan->LumWhiteSqr *= pBokehHightlightScan->MiddleGrey; // Scale by the middle gray value
+	pBokehHightlightScan->LumWhiteSqr *= pBokehHightlightScan->LumWhiteSqr; // Square
+	pBokehHightlightScan->BokehBlurThreshold = mBokehBlurThreshold;
+	pBokehHightlightScan->BokehLumThreshold = mBokehLumThreshold;
+	pBokehHightlightScan->RadiusScale = mBokehRadiusScale;
+	pBokehHightlightScan->ColorScale = mBokehColorScale;
+	pd3dImmediateContext->Unmap(mBokehHightlightScanCB, 0);
+	ID3D11Buffer* arrConstBuffers[1] = { mBokehHightlightScanCB };
+	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
+
+	// Output
+	ID3D11UnorderedAccessView* arrUAVs[1] = { mBokehUAV };
+	UINT nCount = 0; // Indicate we want to flush everything already in the buffer
+	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, &nCount);
+
+	// Input
+	ID3D11ShaderResourceView* arrViews[3] = { pHDRSRV, pDepthSRV, mAvgLumSRV };
+	pd3dImmediateContext->CSSetShaderResources(0, 3, arrViews);
+
+	// Shader
+	pd3dImmediateContext->CSSetShader(mBokehHighlightSearchCS, NULL, 0);
+
+	// Execute the horizontal filter
+	pd3dImmediateContext->Dispatch((UINT)ceil((float)(mWidth * mHeight) / 1024.0f), 1, 1);
+
+	// Cleanup
+	pd3dImmediateContext->CSSetShader(NULL, NULL, 0);
+	ZeroMemory(arrViews, sizeof(arrViews));
+	pd3dImmediateContext->CSSetShaderResources(0, 3, arrViews);
+	ZeroMemory(arrUAVs, sizeof(arrUAVs));
+	pd3dImmediateContext->CSSetUnorderedAccessViews(0, 1, arrUAVs, NULL);
+	ZeroMemory(&arrConstBuffers, sizeof(arrConstBuffers));
+	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
 }
 
 void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* depthSRV, Camera* camera)
@@ -638,4 +683,53 @@ void PostFX::FinalPass(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderRe
 
 void PostFX::BokehRender(ID3D11DeviceContext* pd3dImmediateContext)
 {
+	// Copy the amount of appended highlights
+	pd3dImmediateContext->CopyStructureCount(mBokehIndirectDrawBuffer, 0, mBokehUAV);
+
+	// Constants
+	D3D11_MAPPED_SUBRESOURCE MappedResource;
+	pd3dImmediateContext->Map(mBokehRenderCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource);
+	TBokehRenderCB* pBokehRender = (TBokehRenderCB*)MappedResource.pData;
+	pBokehRender->AspectRatio[0] = 1.0f;
+	pBokehRender->AspectRatio[1] = (float)mWidth / (float)mHeight;
+	pd3dImmediateContext->Unmap(mBokehRenderCB, 0);
+	ID3D11Buffer* arrConstBuffers[1] = { mBokehRenderCB };
+	pd3dImmediateContext->GSSetConstantBuffers(0, 1, arrConstBuffers);
+
+	ID3D11BlendState* pPrevBlendState;
+	FLOAT prevBlendFactor[4];
+	UINT prevSampleMask;
+	pd3dImmediateContext->OMGetBlendState(&pPrevBlendState, prevBlendFactor, &prevSampleMask);
+	pd3dImmediateContext->OMSetBlendState(mAddativeBlendState, prevBlendFactor, prevSampleMask);
+
+	ID3D11ShaderResourceView* arrViews[1] = { mBokehSRV };
+	pd3dImmediateContext->VSSetShaderResources(0, 1, arrViews);
+
+	arrViews[0] = mBokehTexView;
+	pd3dImmediateContext->PSSetShaderResources(0, 1, arrViews);
+
+	pd3dImmediateContext->IASetInputLayout(NULL);
+	pd3dImmediateContext->IASetVertexBuffers(0, 0, NULL, NULL, NULL);
+	pd3dImmediateContext->IASetIndexBuffer(NULL, DXGI_FORMAT_UNKNOWN, 0);
+	pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+	ID3D11SamplerState* arrSamplers[1] = { mSampLinear };
+	pd3dImmediateContext->PSSetSamplers(0, 1, arrSamplers);
+
+	pd3dImmediateContext->VSSetShader(mBokehVS, NULL, 0);
+	pd3dImmediateContext->GSSetShader(mBokehGS, NULL, 0);
+	pd3dImmediateContext->PSSetShader(mBokehPS, NULL, 0);
+
+	pd3dImmediateContext->DrawInstancedIndirect(mBokehIndirectDrawBuffer, 0);
+
+	// Cleanup
+	pd3dImmediateContext->VSSetShader(NULL, NULL, 0);
+	pd3dImmediateContext->GSSetShader(NULL, NULL, 0);
+	pd3dImmediateContext->PSSetShader(NULL, NULL, 0);
+	ZeroMemory(arrViews, sizeof(arrViews));
+	pd3dImmediateContext->VSSetShaderResources(0, 1, arrViews);
+	pd3dImmediateContext->PSSetShaderResources(0, 1, arrViews);
+	pd3dImmediateContext->OMSetBlendState(pPrevBlendState, prevBlendFactor, prevSampleMask);
+	arrConstBuffers[0] = NULL;
+	pd3dImmediateContext->GSSetConstantBuffers(0, 1, arrConstBuffers);
 }
