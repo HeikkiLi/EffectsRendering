@@ -348,6 +348,9 @@ bool DeferredShaderApp::Init()
 
 	V_RETURN(mLightManager.Init(md3dDevice, mCamera));
 
+	// rest of the d3d creation render targets, buffers etc in OnResize that is also executed every time window is resized.
+	OnResize();
+
 	return true;
 }
 

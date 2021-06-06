@@ -459,9 +459,6 @@ bool D3DRendererApp::InitD3D()
 	ReleaseCOM(dxgiAdapter);
 	ReleaseCOM(dxgiFactory);
 
-	// rest of the d3d creation render targets, buffers etc in OnResize that is also executed every time window is resized.
-	OnResize();
-
 	return true;
 }
 
