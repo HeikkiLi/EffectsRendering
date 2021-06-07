@@ -796,6 +796,11 @@ void DeferredShaderApp::RenderGUI()
 				ImGui::TextWrapped("Depth of Field");
 				ImGui::SliderFloat("Start", &mDOFFarStart, 0.0f, mDOFFarStartMax, "%.1f");
 				ImGui::SliderFloat("Range", &mDOFFarRange, .1f, mDOFFarRangeMax, "%.1f");
+
+				ImGui::TextWrapped("Bokeh");
+				ImGui::SliderFloat("Lum Threshold", &mBokehLumThreshold, 0.0f, mBokehLumThresholdMax, "%.1f");
+				ImGui::SliderFloat("Radius Scale", &mBokehRadiusScale, 0.0f, mBokehRadiusScaledMax, "%.1f");
+				ImGui::SliderFloat("Color Scale", &mBokehColorScale, 0.0f, mBokehColorScaleMax, "%.1f");
 			}
 
 			ImGui::End();
