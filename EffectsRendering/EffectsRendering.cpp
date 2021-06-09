@@ -138,12 +138,12 @@ private:
 	float	mDOFFarRangeMax = 150.0f;
 	float	mDOFFarRange = 60.0f;
 
-	float mBokehLumThresholdMax = 25.0f;
+	float mBokehLumThresholdMax = 30.0f;
 	float mBokehLumThreshold = 7.65f;
 	float mBokehBlurThreshold = 0.43f;
-	float mBokehRadiusScaledMax = 0.1;
+	float mBokehRadiusScaledMax = 0.5;
 	float mBokehRadiusScale = 0.05;
-	float mBokehColorScaleMax = 0.25f;
+	float mBokehColorScaleMax = 0.50f;
 	float mBokehColorScale = 0.05f;
 
 };
