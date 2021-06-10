@@ -223,5 +223,8 @@
     <None Include="Shaders\BokehCS.hlsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\SSAO.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
