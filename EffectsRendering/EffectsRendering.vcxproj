@@ -179,6 +179,7 @@
     <ClCompile Include="Renderer\Mesh.cpp" />
     <ClCompile Include="Renderer\ObjLoader.cpp" />
     <ClCompile Include="Renderer\SceneManager.cpp" />
+    <ClCompile Include="Renderer\SSAOManager.cpp" />
     <ClCompile Include="Renderer\TextureManager.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -202,6 +203,7 @@
     <ClInclude Include="Renderer\PostFX.h" />
     <ClInclude Include="Renderer\SceneManager.h" />
     <ClInclude Include="Renderer\Sky.h" />
+    <ClInclude Include="Renderer\SSAOManager.h" />
     <ClInclude Include="Renderer\TextureManager.h" />
     <ClInclude Include="Renderer\Util.h" />
   </ItemGroup>

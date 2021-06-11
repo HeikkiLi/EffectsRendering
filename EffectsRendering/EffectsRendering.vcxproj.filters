@@ -105,6 +105,9 @@
     <ClCompile Include="Renderer\PostFX.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\SSAOManager.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderer\Camera.h">
@@ -171,6 +174,9 @@
       <Filter>3rdParty\DirectXTex\DDSTextureLoader</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\PostFX.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\SSAOManager.h">
       <Filter>Renderer</Filter>
     </ClInclude>
   </ItemGroup>
