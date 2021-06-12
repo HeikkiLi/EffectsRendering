@@ -141,10 +141,10 @@ void SSAOManager::DownscaleDepth(ID3D11DeviceContext* pd3dImmediateContext, ID3D
 	pDownscale->Height = mHeight;
 	pDownscale->HorResRcp = 1.0f / (float)pDownscale->Width;
 	pDownscale->VerResRcp = 1.0f / (float)pDownscale->Height;
-	XMFLOAT4X4* pProj;
-	XMStoreFloat4x4(pProj, camera->Proj());
-	pDownscale->ProjParams.x = 1.0f / pProj->m[0][0];
-	pDownscale->ProjParams.y = 1.0f / pProj->m[1][1];
+	XMFLOAT4X4 pProj;
+	XMStoreFloat4x4(&pProj, camera->Proj());
+	pDownscale->ProjParams.x = 1.0f / pProj.m[0][0];
+	pDownscale->ProjParams.y = 1.0f / pProj.m[1][1];
 	float fQ = camera->GetFarZ() / (camera->GetFarZ() - camera->GetNearZ());
 	pDownscale->ProjParams.z = -camera->GetNearZ() * fQ;
 	pDownscale->ProjParams.w = -fQ;

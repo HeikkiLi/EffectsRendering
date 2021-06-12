@@ -69,6 +69,12 @@ VS_OUTPUT TextureVisVS(uint VertexID : SV_VertexID)
     return Output;
 }
 
+
+float4 TextureVisPS(VS_OUTPUT In) : SV_TARGET
+{
+	return float4(DepthTexture.Sample(PointSampler, In.UV.xy).x, 0.0, 0.0, 1.0);
+}
+
 float4 TextureVisDepthPS(VS_OUTPUT In) : SV_TARGET
 {
 	float4 finalColor = float4(0.0, 0.0, 0.0, 1.0);

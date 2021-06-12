@@ -19,10 +19,9 @@ cbuffer cbPerObjectPS : register(b0)
     bool useNormalMapTexture    : packoffset(c1.w);
 }
 
-//Ttextures and linear sampler
+//Textures and linear sampler
 Texture2D DiffuseTexture    : register(t0);
 Texture2D NormalMapTexture    : register(t1);
-SamplerState LinearSampler  : register(s0);
 
 
 // shader input/output structure

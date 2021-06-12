@@ -24,6 +24,7 @@ IMPLEMENTED
 	- HDR, tonemapping and adaptation
 	- bloom
 	- DoF
+	- Bokeh
 */
 
 
@@ -34,17 +35,19 @@ IMPLEMENTED
 	- fog - Distance Based Fog
 	- sunray
 	- lens flare
-	- Bokeh
 	- screenshot name timestamp and save to folder
 */
 
 #include "Renderer/D3DRendererApp.h"
 #include "Renderer/Camera.h"
 #include "Renderer/GBuffer.h"
+#include "Renderer/SSAOManager.h"
 #include "Renderer/SceneManager.h"
 #include "Renderer/LightManager.h"
 #include "Renderer/PostFX.h"
+#include "Renderer/TextureManager.h"
 #include "Renderer/Util.h"
+
 
 enum RENDER_STATE { BACKBUFFERRT, DEPTHRT, COLSPECRT, NORMALRT, SPECPOWRT };
 
@@ -77,10 +80,12 @@ private:
 	ID3D11PixelShader*	mGBufferVisPixelShader = NULL;
 
 	ID3D11VertexShader* mTextureVisVS = NULL;
-	ID3D11PixelShader* mTextureVisDepthPS = NULL;
-	ID3D11PixelShader* mTextureVisCSpecPS = NULL;
-	ID3D11PixelShader* mTextureVisNormalPS = NULL;
-	ID3D11PixelShader* mTextureVisSpecPowPS = NULL;
+	ID3D11PixelShader*	mTextureVisDepthPS = NULL;
+	ID3D11PixelShader*	mTextureVisCSpecPS = NULL;
+	ID3D11PixelShader*	mTextureVisNormalPS = NULL;
+	ID3D11PixelShader*	mTextureVisSpecPowPS = NULL;
+	ID3D11VertexShader* mSSAOVisVertexShader = NULL;
+	ID3D11PixelShader*	mSSAOVisPixelShader = NULL;
 
 	// for managing the scene
 	SceneManager mSceneManager;
@@ -91,6 +96,13 @@ private:
 	bool mVisualizeGBuffer;
 	void VisualizeGBuffer();
 	void VisualizeFullScreenGBufferTexture();
+
+	// SSAO
+	SSAOManager mSSAOManager;
+	void VisualizeSSAO();
+	bool mVisualizeSSAO;
+	bool mEnableSSAO;
+	ID3D11ShaderResourceView* mWhiteTexSRV = NULL;
 
 	// Light values
 	bool mVisualizeLightVolume;
@@ -110,7 +122,9 @@ private:
 
 	RENDER_STATE mRenderState;
 
+	////////////////////////////////
 	// PostFX
+	////////////////////////////////
 	PostFX	mPostFX;
 	bool	mEnablePostFX;
 
@@ -146,6 +160,8 @@ private:
 	float mBokehColorScaleMax = 0.50f;
 	float mBokehColorScale = 0.05f;
 
+	int mSSAOSAmpRadius = 10;
+	float mSSAORadius = 13.0f;
 };
 
 
@@ -175,6 +191,8 @@ DeferredShaderApp::DeferredShaderApp(HINSTANCE hInstance)
 	mVisualizeGBuffer = false;
 	mShowSettings = true;
 	mShowShadowMap = false;
+	mVisualizeSSAO = false;
+	mEnableSSAO = true;
 	
 	mVisualizeLightVolume = false;
 
@@ -197,8 +215,11 @@ DeferredShaderApp::~DeferredShaderApp()
 	SAFE_RELEASE(mSampPoint);
 	SAFE_RELEASE(mGBufferVisVertexShader);
 	SAFE_RELEASE(mGBufferVisPixelShader);
+	SAFE_RELEASE(mSSAOVisPixelShader);
+	SAFE_RELEASE(mSSAOVisVertexShader);
 
 	SAFE_RELEASE(mTextureVisVS);
+	SAFE_RELEASE(mWhiteTexSRV);
 
 	SAFE_DELETE(mCamera);
 
@@ -215,6 +236,7 @@ DeferredShaderApp::~DeferredShaderApp()
 	mLightManager.Release();
 	mGBuffer.Release();
 	mPostFX.Release();
+	mSSAOManager.Deinit();
 }
 
 bool DeferredShaderApp::Init()
@@ -273,6 +295,18 @@ bool DeferredShaderApp::Init()
 	if (FAILED(hr))
 		return false;
 
+	V_RETURN(CompileShader(str, NULL, "TextureVisVS", "vs_5_0", dwShaderFlags, &pShaderBlob));
+	V_RETURN(md3dDevice->CreateVertexShader(pShaderBlob->GetBufferPointer(),
+		pShaderBlob->GetBufferSize(), NULL, &mSSAOVisVertexShader));
+	DX_SetDebugName(mSSAOVisVertexShader, "Texture visualize VS");
+	SAFE_RELEASE(pShaderBlob);
+
+	V_RETURN(CompileShader(str, NULL, "TextureVisPS", "ps_5_0", dwShaderFlags, &pShaderBlob));
+	V_RETURN(md3dDevice->CreatePixelShader(pShaderBlob->GetBufferPointer(),
+		pShaderBlob->GetBufferSize(), NULL, &mSSAOVisPixelShader));
+	DX_SetDebugName(mSSAOVisPixelShader, "Texture visualize PS");
+	SAFE_RELEASE(pShaderBlob);
+
 	if (!CompileShader(str, NULL, "TextureVisDepthPS", "ps_5_0", dwShaderFlags, &pShaderBlob))
 	{
 		MessageBox(0, L"CompileShader Failed.", 0, 0);
@@ -317,7 +351,6 @@ bool DeferredShaderApp::Init()
 	SAFE_RELEASE(pShaderBlob);
 	if (FAILED(hr))
 		return false;
-
 
 	// create samplers
 	D3D11_SAMPLER_DESC samDesc;
@@ -409,6 +442,11 @@ void DeferredShaderApp::OnResize()
 
 	// init PostFX with new resized backbuffer info
 	mPostFX.Init(md3dDevice, mClientWidth, mClientHeight);
+
+	// Init SSAO
+	mSSAOManager.Init(md3dDevice, mClientWidth, mClientHeight);
+
+	mWhiteTexSRV = TextureManager::Instance()->CreateTexture("..\\Assets\\white.dds");
 }
 
 void DeferredShaderApp::Update(float dt)
@@ -475,6 +513,8 @@ void DeferredShaderApp::Update(float dt)
 							mBokehLumThreshold, mBokehBlurThreshold, mBokehRadiusScale,
 							mBokehColorScale);
 
+	mSSAOManager.SetParameters(mSSAOSAmpRadius, mSSAORadius);
+
 }
 
 void DeferredShaderApp::Render()
@@ -520,12 +560,26 @@ void DeferredShaderApp::Render()
 	ID3D11SamplerState* samplers[2] = { mSampLinear, mSampPoint };
 	md3dImmediateContext->PSSetSamplers(0, 2, samplers);
 
-	// Render to GBuffer
+	// Render scene to GBuffer
 	mGBuffer.PreRender(md3dImmediateContext);
 	mSceneManager.Render(md3dImmediateContext);
 	mGBuffer.PostRender(md3dImmediateContext);
 
-	// set render target
+	// Prepare AO for the lighting
+	ID3D11ShaderResourceView* arrSRV[1] = { NULL };
+	if (mEnableSSAO)
+	{
+		md3dImmediateContext->PSSetShaderResources(6, 1, arrSRV);
+		mSSAOManager.Compute(md3dImmediateContext, mGBuffer.GetDepthView(), mGBuffer.GetNormalView(), mCamera);
+		arrSRV[0] = mSSAOManager.GetSSAOSRV();
+	}
+	else
+	{
+		arrSRV[0] = mWhiteTexSRV;
+	}
+	md3dImmediateContext->PSSetShaderResources(6, 1, arrSRV);
+
+	// set the HDR render target
 	md3dImmediateContext->OMSetRenderTargets(1, mEnablePostFX ? &mHDRRTV : &mRenderTargetView, mGBuffer.GetDepthReadOnlyDSV());
 	mGBuffer.PrepareForUnpack(md3dImmediateContext, mCamera);
 	
@@ -556,11 +610,13 @@ void DeferredShaderApp::Render()
 	if (mVisualizeGBuffer)
 	{
 		md3dImmediateContext->OMSetRenderTargets(1, &mRenderTargetView, NULL);
-
 		VisualizeGBuffer();
-
 		md3dImmediateContext->OMSetRenderTargets(1, &mRenderTargetView, mGBuffer.GetDepthDSV());
+	}
 
+	if (mVisualizeSSAO)
+	{
+		VisualizeSSAO();
 	}
 
 
@@ -719,6 +775,32 @@ void DeferredShaderApp::VisualizeFullScreenGBufferTexture()
 	md3dImmediateContext->PSSetShaderResources(0, 4, arrViews);
 }
 
+void DeferredShaderApp::VisualizeSSAO()
+{
+	ID3D11ShaderResourceView* arrViews[1] = { mSSAOManager.GetSSAOSRV() };
+	md3dImmediateContext->PSSetShaderResources(0, 1, arrViews);
+
+	md3dImmediateContext->PSSetSamplers(0, 1, &mSampPoint);
+
+	md3dImmediateContext->IASetInputLayout(NULL);
+	md3dImmediateContext->IASetVertexBuffers(0, 0, NULL, NULL, NULL);
+	md3dImmediateContext->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	// Set the shaders
+	md3dImmediateContext->VSSetShader(mSSAOVisVertexShader, NULL, 0);
+	md3dImmediateContext->GSSetShader(NULL, NULL, 0);
+	md3dImmediateContext->PSSetShader(mSSAOVisPixelShader, NULL, 0);
+
+	md3dImmediateContext->Draw(4, 0);
+
+	// Cleanup
+	md3dImmediateContext->VSSetShader(NULL, NULL, 0);
+	md3dImmediateContext->PSSetShader(NULL, NULL, 0);
+
+	ZeroMemory(arrViews, sizeof(arrViews));
+	md3dImmediateContext->PSSetShaderResources(0, 1, arrViews);
+}
+
 void DeferredShaderApp::RenderGUI()
 {
 	ImGui_ImplDX11_NewFrame();
@@ -740,42 +822,22 @@ void DeferredShaderApp::RenderGUI()
 			ImGui::SetWindowPos(ImVec2(10, 60), ImGuiSetCond_FirstUseEver);
 
 			ImGui::Spacing();
-
-			ImGui::Text("Directional Light");
-			
-			ImGui::Text("Color:");
-			static ImVec4 color = ImColor(mDirLightColor.m128_f32[0], mDirLightColor.m128_f32[1], mDirLightColor.m128_f32[2]);
-			ImGui::ColorEdit3("DirLightColor##dcol1", (float*)&color, ImGuiColorEditFlags_NoLabel);
-			XMFLOAT3 color3 = XMFLOAT3((float*)&color);
-			mDirLightColor = XMLoadFloat3(&color3);
-			ImGui::Checkbox("Shadows##dirshadow", &mDirCastShadows); 
-			ImGui::Checkbox("Visualize Cascades##visCascades", &mVisualizeCascades);
-			
-			if (ImGui::CollapsingHeader("Camera"))
+			if (ImGui::CollapsingHeader("Sun"))
 			{
-				float campos[3] = { mCamera->GetPosition().x, mCamera->GetPosition().y, mCamera->GetPosition().z };
-				float camlook[3] = { mCamera->GetLook().x, mCamera->GetLook().y, mCamera->GetLook().z };
-				ImGui::SliderFloat3("position##campos", campos, -50.0f, 50.0f);
-				mCamera->SetPosition(XMFLOAT3((float*)&campos));
-
-				ImGui::SliderFloat3("look##campos", camlook, -50.0f, 50.0f);
-				mCamera->SetLook(XMFLOAT3((float*)&camlook));
-				mCamera->UpdateViewMatrix();
-
+				ImGui::Text("Color:");
+				static ImVec4 color = ImColor(mDirLightColor.m128_f32[0], mDirLightColor.m128_f32[1], mDirLightColor.m128_f32[2]);
+				ImGui::ColorEdit3("DirLightColor##dcol1", (float*)&color, ImGuiColorEditFlags_NoLabel);
+				XMFLOAT3 color3 = XMFLOAT3((float*)&color);
+				mDirLightColor = XMLoadFloat3(&color3);
+				ImGui::Checkbox("Shadows##dirshadow", &mDirCastShadows);
+				ImGui::Checkbox("Visualize Cascades##visCascades", &mVisualizeCascades);
 			}
-
-			ImGui::Checkbox("FrameStats (F1)", &mShowRenderStats);
-			ImGui::Checkbox("Visualize Buffers (F2)", &mVisualizeGBuffer);
-			ImGui::Checkbox("Visualize ShadowMap (F3)", &mShowShadowMap);
-			ImGui::TextWrapped("\nToggle settings window (F11)");
-			ImGui::TextWrapped("\nSave screenshot (F4).\n\n");
-
-			ImGui::TextWrapped("MMB rotate sun direction");
-
-			ImGui::Checkbox("Use NormalMap", &g_useNormalMap);
 
 			if (ImGui::CollapsingHeader("Post Effects", ImGuiTreeNodeFlags_DefaultOpen))
 			{
+
+				ImGui::Checkbox("Use NormalMap", &g_useNormalMap);
+
 				ImGui::Checkbox("Enable Post Effects", &mEnablePostFX);
 
 				int iwhite = (int)((mWhite/mWhiteMax) * 255.0f);
@@ -801,8 +863,24 @@ void DeferredShaderApp::RenderGUI()
 				ImGui::SliderFloat("Lum Threshold", &mBokehLumThreshold, 0.0f, mBokehLumThresholdMax, "%.1f");
 				ImGui::SliderFloat("Radius Scale", &mBokehRadiusScale, 0.0f, mBokehRadiusScaledMax, "%.1f");
 				ImGui::SliderFloat("Color Scale", &mBokehColorScale, 0.0f, mBokehColorScaleMax, "%.1f");
+
+				ImGui::TextWrapped("SSAO");
+				ImGui::Checkbox("Enable SSAO", &mEnableSSAO);
+				ImGui::SliderInt("SSAO sample radius", &mSSAOSAmpRadius, 0, 20);
+				ImGui::SliderFloat("SSAO radius", &mSSAORadius, 0.0f, 50.0f);
+
 			}
 
+			if (ImGui::CollapsingHeader("Settings and Visualize"))
+			{
+				ImGui::Checkbox("FrameStats (F1)", &mShowRenderStats);
+				ImGui::Checkbox("Visualize Buffers (F2)", &mVisualizeGBuffer);
+				ImGui::Checkbox("Visualize ShadowMap (F3)", &mShowShadowMap);
+				ImGui::Checkbox("Visualize SSAO", &mVisualizeSSAO);
+				ImGui::TextWrapped("\nToggle settings window (F11)");
+				ImGui::TextWrapped("\nSave screenshot (F4).\n\n");
+				ImGui::TextWrapped("MMB rotate sun direction");
+			}
 			ImGui::End();
 		}
 

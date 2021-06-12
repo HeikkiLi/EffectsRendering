@@ -1,6 +1,7 @@
 #include "common.hlsl"
 
 Texture2DArray<float> CascadeShadowMapTexture : register(t5);
+Texture2D<float> AOTexture : register(t6);
 
 // shader input/output structure
 cbuffer cbDirLight : register(b1)
@@ -23,6 +24,13 @@ static const float2 arrBasePos[4] =
 	float2(1.0, -1.0),
 };
 
+static const float2 arrUV[4] = {
+	float2(1.0, 0.0),
+	float2(1.0, 1.0),
+	float2(0.0, 0.0),
+	float2(0.0, 1.0),
+};
+
 SamplerState samAnisotropic
 {
 	Filter = ANISOTROPIC;
@@ -37,6 +45,7 @@ struct VS_OUTPUT
 {
     float4 Position : SV_Position;
     float2 cpPos	: TEXCOORD0;
+	float2 UV		: TEXCOORD1;
 };
 
 VS_OUTPUT DirLightVS(uint VertexID : SV_VertexID)
@@ -45,6 +54,7 @@ VS_OUTPUT DirLightVS(uint VertexID : SV_VertexID)
 
     Output.Position = float4(arrBasePos[VertexID].xy, 0.0, 1.0);
     Output.cpPos = Output.Position.xy;
+	Output.UV = arrUV[VertexID].xy;
 
     return Output;
 }
@@ -153,8 +163,11 @@ float4 DirLightCommonPS(VS_OUTPUT In, bool bUseShadow) : SV_TARGET
 	// Reconstruct the world position
     float3 position = CalcWorldPos(In.cpPos, gbd.LinearDepth);
 
+	// Get the AO value
+	float ao = AOTexture.Sample(LinearSampler, In.UV);
+
 	// Calculate the ambient color
-    float3 finalColor = CalcAmbient(mat.normal, mat.diffuseColor.rgb);
+    float3 finalColor = CalcAmbient(mat.normal, mat.diffuseColor.rgb) * ao;
 
 	// Calculate the directional light
     finalColor += CalcDirectional(position, mat, bUseShadow);

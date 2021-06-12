@@ -8,7 +8,8 @@ Texture2D<float4> SpecPowTexture		: register(t3);
 
 TextureCube gCubeMap                    : register(t4);
 
-// point sampler
+// samplers
+SamplerState LinearSampler              : register(s0);
 SamplerState PointSampler				: register(s1);
 
 // Shadow sampler
