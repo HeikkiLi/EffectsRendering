@@ -780,7 +780,7 @@ void DeferredShaderApp::VisualizeSSAO()
 	ID3D11ShaderResourceView* arrViews[1] = { mSSAOManager.GetSSAOSRV() };
 	md3dImmediateContext->PSSetShaderResources(0, 1, arrViews);
 
-	md3dImmediateContext->PSSetSamplers(0, 1, &mSampPoint);
+	md3dImmediateContext->PSSetSamplers(1, 1, &mSampPoint);
 
 	md3dImmediateContext->IASetInputLayout(NULL);
 	md3dImmediateContext->IASetVertexBuffers(0, 0, NULL, NULL, NULL);
@@ -866,8 +866,8 @@ void DeferredShaderApp::RenderGUI()
 
 				ImGui::TextWrapped("SSAO");
 				ImGui::Checkbox("Enable SSAO", &mEnableSSAO);
-				ImGui::SliderInt("SSAO sample radius", &mSSAOSAmpRadius, 0, 20);
-				ImGui::SliderFloat("SSAO radius", &mSSAORadius, 0.0f, 50.0f);
+				ImGui::SliderInt("SSAO sample radius", &mSSAOSAmpRadius, 1, 20);
+				ImGui::SliderFloat("SSAO radius", &mSSAORadius, 0.1f, 50.0f);
 
 			}
 

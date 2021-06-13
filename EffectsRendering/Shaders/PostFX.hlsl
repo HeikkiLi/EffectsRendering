@@ -4,8 +4,9 @@ Texture2D<float4> BloomTex		: register(t2);
 Texture2D<float4> DOFBlurTex	: register(t3);
 Texture2D<float> DepthTex		: register(t4);
 
-SamplerState PointSampler		: register(s0);
-SamplerState LinearSampler		: register(s1);
+
+SamplerState LinearSampler		: register(s0);
+SamplerState PointSampler		: register(s1);
 
 static const float2 arrBasePos[4] = {
 	float2(-1.0, 1.0),

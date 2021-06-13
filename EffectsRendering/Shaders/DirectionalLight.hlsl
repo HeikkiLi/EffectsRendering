@@ -18,10 +18,10 @@ cbuffer cbDirLight : register(b1)
 
 static const float2 arrBasePos[4] =
 {
-    float2(-1.0, 1.0),
 	float2(1.0, 1.0),
-	float2(-1.0, -1.0),
 	float2(1.0, -1.0),
+	float2(-1.0, 1.0),
+	float2(-1.0, -1.0),
 };
 
 static const float2 arrUV[4] = {
@@ -167,7 +167,7 @@ float4 DirLightCommonPS(VS_OUTPUT In, bool bUseShadow) : SV_TARGET
 	float ao = AOTexture.Sample(LinearSampler, In.UV);
 
 	// Calculate the ambient color
-    float3 finalColor = CalcAmbient(mat.normal, mat.diffuseColor.rgb) * ao;
+	float3 finalColor = CalcAmbient(mat.normal, mat.diffuseColor.rgb) *ao;
 
 	// Calculate the directional light
     finalColor += CalcDirectional(position, mat, bUseShadow);
