@@ -161,6 +161,7 @@
     <ClCompile Include="..\3rdParty\imgui\imgui.cpp" />
     <ClCompile Include="..\3rdParty\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\3rdParty\imgui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="Renderer\LensflareManager.cpp" />
     <ClCompile Include="Renderer\PostFX.cpp" />
     <ClCompile Include="Renderer\Sky.cpp" />
     <ClCompile Include="EffectsRendering.cpp">
@@ -197,6 +198,7 @@
     <ClInclude Include="Renderer\DemoTimer.h" />
     <ClInclude Include="Renderer\GBuffer.h" />
     <ClInclude Include="Renderer\GeometryGenerator.h" />
+    <ClInclude Include="Renderer\LensflareManager.h" />
     <ClInclude Include="Renderer\LightManager.h" />
     <ClInclude Include="Renderer\Mesh.h" />
     <ClInclude Include="Renderer\ObjLoader.h" />
@@ -273,6 +275,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\SSAO.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Lensflare.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

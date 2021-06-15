@@ -25,12 +25,12 @@ IMPLEMENTED
 	- bloom
 	- DoF
 	- Bokeh
+	- SSAO - Screen Space Ambient Occlusion
 */
 
 
 /// TODO
 /*
-	- SSAO - Screen Space Ambient Occlusion
 	- SSR - Screen Space Reflections
 	- fog - Distance Based Fog
 	- sunray
@@ -44,6 +44,7 @@ IMPLEMENTED
 #include "Renderer/SSAOManager.h"
 #include "Renderer/SceneManager.h"
 #include "Renderer/LightManager.h"
+#include "Renderer/LensflareManager.h"
 #include "Renderer/PostFX.h"
 #include "Renderer/TextureManager.h"
 #include "Renderer/Util.h"
@@ -103,6 +104,9 @@ private:
 	bool mVisualizeSSAO;
 	bool mEnableSSAO;
 	ID3D11ShaderResourceView* mWhiteTexSRV = NULL;
+
+	// Lensflare
+	LensflareManager mLensflareManager;
 
 	// Light values
 	bool mVisualizeLightVolume;
@@ -237,6 +241,7 @@ DeferredShaderApp::~DeferredShaderApp()
 	mGBuffer.Release();
 	mPostFX.Release();
 	mSSAOManager.Deinit();
+	mLensflareManager.Release();
 }
 
 bool DeferredShaderApp::Init()
@@ -446,6 +451,8 @@ void DeferredShaderApp::OnResize()
 	// Init SSAO
 	mSSAOManager.Init(md3dDevice, mClientWidth, mClientHeight);
 
+	mLensflareManager.Init(md3dDevice);
+
 	mWhiteTexSRV = TextureManager::Instance()->CreateTexture("..\\Assets\\white.dds");
 }
 
@@ -514,6 +521,12 @@ void DeferredShaderApp::Update(float dt)
 							mBokehColorScale);
 
 	mSSAOManager.SetParameters(mSSAOSAmpRadius, mSSAORadius);
+
+	const XMFLOAT3 vEyePos = mCamera->GetPosition();
+	XMFLOAT3 dirlightDir;
+	XMStoreFloat3(&dirlightDir, mDirLightDir);
+	XMFLOAT3 sunPosition = XMFLOAT3(vEyePos.x - 200.0f * dirlightDir.x, -200.0f * dirlightDir.y, vEyePos.z - 200.0f * dirlightDir.z);
+	mLensflareManager.Update(sunPosition, dt, mCamera);
 
 }
 
@@ -586,11 +599,19 @@ void DeferredShaderApp::Render()
 	// do lighting
 	mLightManager.DoLighting(md3dImmediateContext, &mGBuffer, mCamera);
 
-	// Render the sky
+	// Render sun visibility
 	XMFLOAT3 sunDir;
 	XMStoreFloat3(&sunDir, mDirLightDir);
 	XMFLOAT3 sunColor;
 	XMStoreFloat3(&sunColor, (2.0f * mDirLightColor));
+	mLensflareManager.BeginSunVisibility(md3dImmediateContext);
+	mSceneManager.RenderSky(md3dImmediateContext, sunDir, sunColor);
+	mLensflareManager.EndSunVisibility(md3dImmediateContext);
+
+	// render lens flare
+	mLensflareManager.Render(md3dImmediateContext, mCamera);
+	
+	// render the sky
 	mSceneManager.RenderSky(md3dImmediateContext, sunDir, sunColor);
 
 	if (mEnablePostFX)

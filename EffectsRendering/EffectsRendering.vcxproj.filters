@@ -108,6 +108,9 @@
     <ClCompile Include="Renderer\SSAOManager.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\LensflareManager.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderer\Camera.h">
@@ -179,6 +182,9 @@
     <ClInclude Include="Renderer\SSAOManager.h">
       <Filter>Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\LensflareManager.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Common.hlsl">
@@ -230,6 +236,9 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\SSAO.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Lensflare.hlsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>
