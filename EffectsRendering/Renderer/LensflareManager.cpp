@@ -5,9 +5,9 @@
 
 struct CB_LENSFLARE_VS
 {
-	Vector4 Position;
-	Vector4 ScaleRotate;
-	Vector4 Color;
+	XMFLOAT4 Position;
+	XMFLOAT4 ScaleRotate;
+	XMFLOAT4 Color;
 };
 
 LensflareManager::LensflareManager() : mPredicate(NULL), mOcclusionQuery(NULL), mNoDepthState(NULL), mAddativeBlendState(NULL), mNoColorBlendState(NULL),
@@ -70,10 +70,10 @@ HRESULT LensflareManager::Init(ID3D11Device* device)
 	SAFE_RELEASE(pShaderBuffer);
 
 	// Load the corona texture
-	mCoronaTexView = TextureManager::Instance()->CreateTexture("..\\Assets\\Corona.dds");
+	mCoronaTexView = TextureManager::Instance()->CreateTexture("..\\Assets\\Corona.jpg");
 
 	// Load the flares texture
-	mFlareTexView = TextureManager::Instance()->CreateTexture("..\\Assets\\Flare.dds");
+	mFlareTexView = TextureManager::Instance()->CreateTexture("..\\Assets\\Flare.jpg");
 
 	D3D11_DEPTH_STENCIL_DESC descDepth;
 	descDepth.DepthEnable = FALSE;

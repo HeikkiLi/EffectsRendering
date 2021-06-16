@@ -55,6 +55,7 @@ ID3D11ShaderResourceView* TextureManager::CreateTexture(std::string filename)
 			if (strEnding == ".dds")
 			{
 				DirectX::CreateDDSTextureFromFile(md3dDevice, wstrFilename.c_str(), &texture, &srv);
+				
 				/*
 				size_t maxsize = 0;
 				DDS_ALPHA_MODE* alphaMode = nullptr;

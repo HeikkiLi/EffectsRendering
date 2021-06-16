@@ -526,7 +526,7 @@ void DeferredShaderApp::Update(float dt)
 	XMFLOAT3 dirlightDir;
 	XMStoreFloat3(&dirlightDir, mDirLightDir);
 	XMFLOAT3 sunPosition = XMFLOAT3(vEyePos.x - 200.0f * dirlightDir.x, -200.0f * dirlightDir.y, vEyePos.z - 200.0f * dirlightDir.z);
-	mLensflareManager.Update(sunPosition, dt, mCamera);
+	mLensflareManager.Update(sunPosition, dt, mCamera); // TODO update add sun color  (dir light color)
 
 }
 
