@@ -19,6 +19,9 @@ public:
 	void SetParameters(float middleGrey, float white, float adaptation, float bloomThreshold, float bloomScale, bool enableBloom, float DOFFarStart, float DOFFarRange,
 		float bokehLumThreshold, float bokehBlurThreshold, float bokehRadiusScale, float bokehColorScale);
 
+	// Apply a gaussian blur to the input and store it in the output
+	void Blur(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pInput, ID3D11UnorderedAccessView* pOutput);
+
 private:
 
 	// Downscale HDR image
@@ -26,9 +29,6 @@ private:
 
 	// Extract the bloom values from the downscaled image
 	void Bloom(ID3D11DeviceContext* pd3dImmediateContext);
-
-	// Apply a gaussian blur to the input and store it in the output
-	void Blur(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pInput, ID3D11UnorderedAccessView* pOutput);
 
 	void BokehHightlightScan(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pHDRSRV, ID3D11ShaderResourceView* pDepthSRV, Camera* camera);
 

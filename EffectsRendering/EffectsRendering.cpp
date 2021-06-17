@@ -583,7 +583,7 @@ void DeferredShaderApp::Render()
 	if (mEnableSSAO)
 	{
 		md3dImmediateContext->PSSetShaderResources(6, 1, arrSRV);
-		mSSAOManager.Compute(md3dImmediateContext, mGBuffer.GetDepthView(), mGBuffer.GetNormalView(), mCamera);
+		mSSAOManager.Compute(md3dImmediateContext, mGBuffer.GetDepthView(), mGBuffer.GetNormalView(), mCamera, &mPostFX);
 		arrSRV[0] = mSSAOManager.GetSSAOSRV();
 	}
 	else

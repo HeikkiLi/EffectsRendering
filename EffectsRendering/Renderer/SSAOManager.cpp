@@ -124,11 +124,11 @@ void SSAOManager::Deinit()
 	SAFE_RELEASE(mComputeCS);
 }
 
-void SSAOManager::Compute(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pDepthSRV, ID3D11ShaderResourceView* pNormalsSRV, Camera* camera)
+void SSAOManager::Compute(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pDepthSRV, ID3D11ShaderResourceView* pNormalsSRV, Camera* camera, PostFX* postFx)
 {
 	DownscaleDepth(pd3dImmediateContext, pDepthSRV, pNormalsSRV, camera);
 	ComputeSSAO(pd3dImmediateContext);
-	Blur(pd3dImmediateContext);
+	Blur(pd3dImmediateContext, postFx);
 }
 
 void SSAOManager::DownscaleDepth(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pDepthSRV, ID3D11ShaderResourceView* pNormalsSRV, Camera* camera)
@@ -210,7 +210,7 @@ void SSAOManager::ComputeSSAO(ID3D11DeviceContext* pd3dImmediateContext)
 	pd3dImmediateContext->CSSetConstantBuffers(0, 1, arrConstBuffers);
 }
 
-void SSAOManager::Blur(ID3D11DeviceContext* pd3dImmediateContext)
+void SSAOManager::Blur(ID3D11DeviceContext* pd3dImmediateContext, PostFX* postFx)
 {
-
+	postFx->Blur(pd3dImmediateContext, mSSAO_SRV, mSSAO_UAV);
 }

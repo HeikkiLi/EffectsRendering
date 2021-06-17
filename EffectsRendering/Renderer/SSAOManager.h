@@ -3,6 +3,8 @@
 #include "Util.h"
 #include "Camera.h"
 
+#include "PostFX.h"
+
 class SSAOManager
 {
 public:
@@ -13,7 +15,7 @@ public:
 	HRESULT Init(ID3D11Device* device, UINT width, UINT height);
 	void Deinit();
 
-	void Compute(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pDepthSRV, ID3D11ShaderResourceView* pNormalsSRV, Camera* camera);
+	void Compute(ID3D11DeviceContext* pd3dImmediateContext, ID3D11ShaderResourceView* pDepthSRV, ID3D11ShaderResourceView* pNormalsSRV, Camera* camera, PostFX* postFx);
 
 	void SetParameters(int SSAOSampRadius, float radius) { mSSAOSampRadius = SSAOSampRadius; mRadius = radius; }
 
@@ -25,7 +27,7 @@ private:
 
 	void ComputeSSAO(ID3D11DeviceContext* pd3dImmediateContext);
 
-	void Blur(ID3D11DeviceContext* pd3dImmediateContext);
+	void Blur(ID3D11DeviceContext* pd3dImmediateContext, PostFX* postFx);
 
 	UINT mWidth;
 	UINT mHeight;
