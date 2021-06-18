@@ -23,8 +23,8 @@ public:
 	void EndSunVisibility(ID3D11DeviceContext* pd3dImmediateContext);
 
 	static const int mTotalLights = 1;
-	static const int mTotalCoronaFlares = 4;
-	static const int mTotalFlares = 10;
+	static const int mTotalCoronaFlares = 8;
+	static const int mTotalFlares = 8;
 
 private:
 

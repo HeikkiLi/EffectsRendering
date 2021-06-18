@@ -212,5 +212,5 @@ void SSAOManager::ComputeSSAO(ID3D11DeviceContext* pd3dImmediateContext)
 
 void SSAOManager::Blur(ID3D11DeviceContext* pd3dImmediateContext, PostFX* postFx)
 {
-	postFx->Blur(pd3dImmediateContext, mSSAO_SRV, mSSAO_UAV);
+	//postFx->Blur(pd3dImmediateContext, mSSAO_SRV, mSSAO_UAV);
 }

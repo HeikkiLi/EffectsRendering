@@ -213,11 +213,12 @@ void LensflareManager::Render(ID3D11DeviceContext* pd3dImmediateContext, Camera*
 	{
 		pCB[j].Position = Vector4(mSunPos2D.x, mSunPos2D.y, 0.0f, 0.0f);
 
-		float fSin = sinf(mCoronaRotation + static_cast<float>(j) * M_PI / 4.0f + M_PI / 5.0f);
-		float fCos = cosf(mCoronaRotation + static_cast<float>(j) * M_PI / 4.0f + M_PI / 5.0f);
-		const float coronaWidthScale = 14.0f;
+		float fSin = sinf(mCoronaRotation + static_cast<float>(j) * M_PI / mTotalCoronaFlares + M_PI / 5.0f);
+		float fCos = cosf(mCoronaRotation + static_cast<float>(j) * M_PI / mTotalCoronaFlares + M_PI / 5.0f);
+		const float coronaWidthScale = 5.0f;
+		const float coronaHeightScale = 0.25f;
 		float fScaleX = mArrFlares[j].fScale * coronaWidthScale;
-		float fScaleY = mArrFlares[j].fScale;
+		float fScaleY = mArrFlares[j].fScale * coronaHeightScale;
 		pCB[j].ScaleRotate = Vector4(fScaleX * fCos, fScaleY * -fSin, fScaleX * fSin * camera->GetAspect(), fScaleY * fCos * camera->GetAspect());
 
 		pCB[j].Color = mArrFlares[j].Color * mSunVisibility;
@@ -251,7 +252,7 @@ void LensflareManager::Render(ID3D11DeviceContext* pd3dImmediateContext, Camera*
 	// Render the flares
 	pd3dImmediateContext->PSSetShaderResources(0, 1, &mFlareTexView);
 	pd3dImmediateContext->VSSetConstantBuffers(0, 1, &mLensflareCB);
-	pd3dImmediateContext->Draw(6 * (mTotalFlares - mTotalCoronaFlares), 0);
+	pd3dImmediateContext->Draw(6 * (mTotalFlares), 0);
 
 	// Restore the blend state
 	pd3dImmediateContext->OMSetDepthStencilState(pPrevDepthState, 0);
