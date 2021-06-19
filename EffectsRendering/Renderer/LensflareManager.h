@@ -23,8 +23,8 @@ public:
 	void EndSunVisibility(ID3D11DeviceContext* pd3dImmediateContext);
 
 	static const int mTotalLights = 1;
-	static const int mTotalCoronaFlares = 8;
-	static const int mTotalFlares = 8;
+	static const int mTotalCoronaFlares = 9;
+	static const int mTotalFlares = 10;
 
 private:
 
@@ -53,6 +53,13 @@ private:
 		Vector4 Color;
 	} FLARE;
 	FLARE mArrFlares[mTotalFlares];
+
+	typedef struct
+	{
+		float fScale;
+		Vector4 Color;
+	} CORONA;
+	CORONA mArrCorona[3];
 
 	// Rotate the corona over time
 	float mCoronaRotation;

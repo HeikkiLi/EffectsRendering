@@ -141,6 +141,13 @@ HRESULT LensflareManager::Init(ID3D11Device* device)
 	mArrFlares[9].fScale = 0.1f;
 	mArrFlares[9].Color = Vector4(0.23f, 0.21, 0.44, 0.85f);
 
+	mArrCorona[0].fScale = 0.048f;
+	mArrCorona[0].Color = Vector4(0.2f, 0.18f, 0.15f, 0.25f);
+	mArrCorona[1].fScale = 0.045f;
+	mArrCorona[1].Color = Vector4(0.2f, 0.18f, 0.15f, 0.25f);
+	mArrCorona[2].fScale = 0.078f;
+	mArrCorona[2].Color = Vector4(0.2f, 0.18f, 0.15f, 0.25f);
+
 	return hr;
 }
 
@@ -213,15 +220,16 @@ void LensflareManager::Render(ID3D11DeviceContext* pd3dImmediateContext, Camera*
 	{
 		pCB[j].Position = Vector4(mSunPos2D.x, mSunPos2D.y, 0.0f, 0.0f);
 
-		float fSin = sinf(mCoronaRotation + static_cast<float>(j) * M_PI / mTotalCoronaFlares + M_PI / 5.0f);
-		float fCos = cosf(mCoronaRotation + static_cast<float>(j) * M_PI / mTotalCoronaFlares + M_PI / 5.0f);
+		float fSin = sinf(mCoronaRotation + static_cast<float>(j) * M_PI / 9.0f + M_PI / 5.0f);
+		float fCos = cosf(mCoronaRotation + static_cast<float>(j) * M_PI / 9.0f + M_PI / 5.0f);
 		const float coronaWidthScale = 5.0f;
-		const float coronaHeightScale = 0.25f;
-		float fScaleX = mArrFlares[j].fScale * coronaWidthScale;
-		float fScaleY = mArrFlares[j].fScale * coronaHeightScale;
+		const float coronaHeightScale = 0.15f;
+		int i = j % 3;
+		float fScaleX = mArrCorona[i].fScale * coronaWidthScale;
+		float fScaleY = mArrCorona[i].fScale * coronaHeightScale;
 		pCB[j].ScaleRotate = Vector4(fScaleX * fCos, fScaleY * -fSin, fScaleX * fSin * camera->GetAspect(), fScaleY * fCos * camera->GetAspect());
 
-		pCB[j].Color = mArrFlares[j].Color * mSunVisibility;
+		pCB[j].Color = mArrCorona[i].Color * mSunVisibility;
 	}
 	pd3dImmediateContext->Unmap(mLensflareCB, 0);
 
