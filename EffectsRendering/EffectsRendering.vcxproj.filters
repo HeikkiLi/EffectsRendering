@@ -241,5 +241,8 @@
     <None Include="Shaders\Lensflare.hlsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\SSLR.hlsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
