@@ -25,3 +25,4 @@ Mouse:
 - ssr
 - ssao
 - sun rays
+- lens flare 
