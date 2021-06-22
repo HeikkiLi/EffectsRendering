@@ -206,6 +206,7 @@
     <ClInclude Include="Renderer\SceneManager.h" />
     <ClInclude Include="Renderer\Sky.h" />
     <ClInclude Include="Renderer\SSAOManager.h" />
+    <ClInclude Include="Renderer\SSLRManager.h" />
     <ClInclude Include="Renderer\TextureManager.h" />
     <ClInclude Include="Renderer\Util.h" />
   </ItemGroup>
