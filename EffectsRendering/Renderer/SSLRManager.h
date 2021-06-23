@@ -1,10 +1,12 @@
 #pragma once
 
 #include "Util.h"
+#include "Camera.h"
 #include "DirectXTK/SimpleMath.h"
 
 using namespace DirectX::SimpleMath;
 
+// Screen Space LightRay Manager
 class SSLRManager
 {
 public:
@@ -12,11 +14,11 @@ public:
 	SSLRManager();
 	~SSLRManager();
 
-	HRESULT Init(UINT width, UINT height);
-	void Deinit();
+	HRESULT Init(ID3D11Device* device, UINT width, UINT height);
+	void Release();
 
 	// Render the screen space light rays on top of the scene
-	void Render(ID3D11DeviceContext* pd3dImmediateContext, ID3D11RenderTargetView* pLightAccumRTV, ID3D11ShaderResourceView* pMiniDepthSRV, const Vector3& vSunDir, const Vector3& vSunColor);
+	void Render(ID3D11DeviceContext* pd3dImmediateContext, ID3D11RenderTargetView* pLightAccumRTV, ID3D11ShaderResourceView* pMiniDepthSRV, const Vector3& vSunDir, const Vector3& vSunColor, Camera* camera);
 
 private:
 

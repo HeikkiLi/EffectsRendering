@@ -20,6 +20,7 @@ public:
 	void SetParameters(int SSAOSampRadius, float radius) { mSSAOSampRadius = SSAOSampRadius; mRadius = radius; }
 
 	ID3D11ShaderResourceView* GetSSAOSRV() { return mSSAO_SRV; }
+	ID3D11ShaderResourceView* GetMiniDepthSRV() { return mSSAO_SRV; }
 
 private:
 

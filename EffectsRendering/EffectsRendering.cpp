@@ -45,6 +45,7 @@ IMPLEMENTED
 #include "Renderer/SceneManager.h"
 #include "Renderer/LightManager.h"
 #include "Renderer/LensflareManager.h"
+#include "Renderer/SSLRManager.h"
 #include "Renderer/PostFX.h"
 #include "Renderer/TextureManager.h"
 #include "Renderer/Util.h"
@@ -108,6 +109,9 @@ private:
 	// Lensflare
 	LensflareManager mLensflareManager;
 
+	// ScreenSpace LightRays
+	SSLRManager mSSLRManager;
+
 	// Light values
 	bool mVisualizeLightVolume;
 	XMVECTOR mAmbientLowerColor;
@@ -166,6 +170,9 @@ private:
 
 	int mSSAOSAmpRadius = 10;
 	float mSSAORadius = 13.0f;
+
+	bool mEnableSSLR = true;
+	float mSSLRIntensity = 0.2f;
 };
 
 
@@ -242,6 +249,7 @@ DeferredShaderApp::~DeferredShaderApp()
 	mPostFX.Release();
 	mSSAOManager.Deinit();
 	mLensflareManager.Release();
+	mSSLRManager.Release();
 }
 
 bool DeferredShaderApp::Init()
@@ -453,6 +461,8 @@ void DeferredShaderApp::OnResize()
 
 	mLensflareManager.Init(md3dDevice);
 
+	mSSLRManager.Init(md3dDevice, mClientWidth, mClientHeight);
+
 	mWhiteTexSRV = TextureManager::Instance()->CreateTexture("..\\Assets\\white.dds");
 }
 
@@ -613,6 +623,11 @@ void DeferredShaderApp::Render()
 	
 	// render the sky
 	mSceneManager.RenderSky(md3dImmediateContext, sunDir, sunColor);
+
+	if (mEnableSSLR)
+	{
+		mSSLRManager.Render(md3dImmediateContext, mEnablePostFX ? mHDRRTV : mRenderTargetView, mSSAOManager.GetMiniDepthSRV(), mDirLightDir, mSSLRIntensity * mDirLightColor, mCamera);
+	}
 
 	if (mEnablePostFX)
 	{

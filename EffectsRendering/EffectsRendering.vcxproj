@@ -181,6 +181,7 @@
     <ClCompile Include="Renderer\ObjLoader.cpp" />
     <ClCompile Include="Renderer\SceneManager.cpp" />
     <ClCompile Include="Renderer\SSAOManager.cpp" />
+    <ClCompile Include="Renderer\SSLRManager.cpp" />
     <ClCompile Include="Renderer\TextureManager.cpp" />
   </ItemGroup>
   <ItemGroup>
