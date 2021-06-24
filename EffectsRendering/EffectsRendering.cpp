@@ -172,6 +172,7 @@ private:
 	float mSSAORadius = 13.0f;
 
 	bool mEnableSSLR = true;
+	float mSSLRIntensityMax = 1.0f;
 	float mSSLRIntensity = 0.2f;
 };
 
@@ -904,6 +905,10 @@ void DeferredShaderApp::RenderGUI()
 				ImGui::Checkbox("Enable SSAO", &mEnableSSAO);
 				ImGui::SliderInt("SSAO sample radius", &mSSAOSAmpRadius, 1, 20);
 				ImGui::SliderFloat("SSAO radius", &mSSAORadius, 0.1f, 50.0f);
+
+				ImGui::TextWrapped("LightRays");
+				ImGui::Checkbox("Enable LightRays", &mEnableSSLR);
+				ImGui::SliderFloat("Intensity", &mSSLRIntensity, 0.1f, mSSLRIntensityMax);
 
 			}
 
