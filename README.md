@@ -3,6 +3,17 @@
 ![EffectsRendering with DX11 .](EffectsRendering/screenshot.jpg)
 
 WIP screenshot
+
+## Features:
+- HDR 
+- bloom 
+- bokeh
+- dof
+- ssr
+- ssao
+- sun rays
+- lens flare 
+
 ## Controls:
 
 Keys:
@@ -17,12 +28,4 @@ Mouse:
 - MMB Rotate directional light
 - RMB Rotate camera look 
 
-## Features:
-- HDR 
-- bloom 
-- bokeh
-- dof
-- ssr
-- ssao
-- sun rays
-- lens flare 
+
