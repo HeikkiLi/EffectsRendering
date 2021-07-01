@@ -174,6 +174,8 @@ private:
 	bool mEnableSSLR = true;
 	float mSSLRIntensityMax = 1.0f;
 	float mSSLRIntensity = 0.2f;
+
+	bool mEnableLensFlares = true;
 };
 
 
@@ -615,13 +617,17 @@ void DeferredShaderApp::Render()
 	XMStoreFloat3(&sunDir, mDirLightDir);
 	XMFLOAT3 sunColor;
 	XMStoreFloat3(&sunColor, (2.0f * mDirLightColor));
-	mLensflareManager.BeginSunVisibility(md3dImmediateContext);
-	mSceneManager.RenderSky(md3dImmediateContext, sunDir, sunColor);
-	mLensflareManager.EndSunVisibility(md3dImmediateContext);
 
-	// render lens flare
-	mLensflareManager.Render(md3dImmediateContext, mCamera);
-	
+	if (mEnableLensFlares)
+	{
+		mLensflareManager.BeginSunVisibility(md3dImmediateContext);
+		mSceneManager.RenderSky(md3dImmediateContext, sunDir, sunColor);
+		mLensflareManager.EndSunVisibility(md3dImmediateContext);
+
+		// render lens flare
+		mLensflareManager.Render(md3dImmediateContext, mCamera);
+	}
+
 	// render the sky
 	mSceneManager.RenderSky(md3dImmediateContext, sunDir, sunColor);
 
@@ -909,6 +915,8 @@ void DeferredShaderApp::RenderGUI()
 				ImGui::TextWrapped("LightRays");
 				ImGui::Checkbox("Enable LightRays", &mEnableSSLR);
 				ImGui::SliderFloat("Intensity", &mSSLRIntensity, 0.1f, mSSLRIntensityMax);
+
+				ImGui::Checkbox("Enable LensFlares", &mEnableLensFlares);				
 
 			}
 
