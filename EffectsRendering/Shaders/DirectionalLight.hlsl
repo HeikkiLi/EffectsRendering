@@ -172,6 +172,10 @@ float4 DirLightCommonPS(VS_OUTPUT In, bool bUseShadow) : SV_TARGET
 	// Calculate the directional light
     finalColor += CalcDirectional(position, mat, bUseShadow);
 
+	// Apply the fog to the final color
+	float3 eyeToPixel = position - EyePosition;
+	finalColor = ApplyFog(finalColor, EyePosition.y, eyeToPixel);
+
 	// Return the final color
     return float4(finalColor, 1.0);
 }

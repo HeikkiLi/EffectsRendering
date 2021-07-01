@@ -23,17 +23,15 @@ cbuffer cbGBufferUnpack : register(b0)
     float4x4 ViewInv            : packoffset(c1);
 }
 
-/*
 cbuffer cbFog : register(b2)
 {
-    float3 FogColor             : packoffset(c0);
-    float FogStartDepth         : packoffset(c0.w);
-    float3 FogHighlightColor    : packoffset(c1);
-    float FogGlobalDensity      : packoffset(c1.w);
-    float3 FogSunDir            : packoffset(c2);
-    float FogStartHeight        : packoffset(c2.w);
+    float3 FogColor          : packoffset(c0);
+    float FogStartDist       : packoffset(c0.w);
+    float3 FogHighlightColor : packoffset(c1);
+    float FogGlobalDensity   : packoffset(c1.w);
+    float3 FogSunDir	     : packoffset(c2);
+    float FogHeightFalloff   : packoffset(c2.w);
 }
-*/
 
 #define EyePosition (ViewInv[3].xyz)
 
@@ -144,4 +142,33 @@ float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, floa
     float3 bumpedNormalW = mul(normalT, TBN);
 
     return bumpedNormalW;
+}
+
+float3 ApplyFog(float3 originalColor, float eyePosY, float3 eyeToPixel)
+{
+    float pixelDist = length(eyeToPixel);
+    float3 eyeToPixelNorm = eyeToPixel / pixelDist;
+
+    // Find the fog starting distance to pixel distance
+    float fogDist = max(pixelDist - FogStartDist, 0.0);
+
+    // Distance based fog intensity
+    float fogHeightDensityAtViewer = exp(-FogHeightFalloff * eyePosY);
+    float fogDistInt = fogDist * fogHeightDensityAtViewer;
+
+    // Height based fog intensity
+    float eyeToPixelY = eyeToPixel.y * (fogDist / pixelDist);
+    float t = FogHeightFalloff * eyeToPixelY;
+    const float thresholdT = 0.01;
+    float fogHeightInt = abs(t) > thresholdT ? (1.0 - exp(-t)) / t : 1.0;
+
+    // Combine both factors to get the final factor
+    float fogFinalFactor = exp(-FogGlobalDensity * fogDistInt * fogHeightInt);
+
+    // Find the sun highlight and use it to blend the fog color
+    float sunHighlightFactor = saturate(dot(eyeToPixelNorm, FogSunDir));
+    sunHighlightFactor = pow(sunHighlightFactor, 8.0);
+    float3 fogFinalColor = lerp(FogColor, FogHighlightColor, sunHighlightFactor);
+
+    return lerp(fogFinalColor, originalColor, fogFinalFactor);
 }

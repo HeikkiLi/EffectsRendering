@@ -123,7 +123,17 @@ private:
 	bool mAntiFlickerOn;
 	bool mVisualizeCascades;
 
+	// Fog constant buffer and settings
+	ID3D11Buffer* mFogCB = NULL;
+	Vector3 mFogColor = Vector3(0.5f, 0.5f, 0.5f);
+	Vector3 mFogHighlightColor = Vector3(0.3f, 0.3f, 0.4f);
+	float mFogStartDepth = 37.0f;
+	float mMaxFogGlobalDensity = 2.0f;
+	float mFogGlobalDensity = 1.5f;
+	float mFogHeightFalloff = 0.2f;
 	
+	float mTimeOfDay = 0.067f;
+
 	void RenderGUI();
 	bool mShowSettings;
 	bool mShowShadowMap;
@@ -178,7 +188,17 @@ private:
 	bool mEnableLensFlares = true;
 };
 
-
+#pragma pack(push,1)
+struct CB_FOG_PS
+{
+	Vector3 Color;
+	float StartDepth;
+	Vector3 HighlightColor;
+	float GlobalDensity;
+	Vector3 DirToSun;
+	float HeightFalloff;
+};
+#pragma pack(pop)
 
 // The Application entry point
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, int showCmd)
@@ -245,6 +265,8 @@ DeferredShaderApp::~DeferredShaderApp()
 	SAFE_RELEASE(mHDRTexture)
 	SAFE_RELEASE(mHDRRTV);
 	SAFE_RELEASE(mHDRSRV);
+
+	SAFE_RELEASE(mFogCB);
 
 	mSceneManager.Release();
 	mLightManager.Release();
@@ -396,6 +418,16 @@ bool DeferredShaderApp::Init()
 		return false;
 
 	V_RETURN(mLightManager.Init(md3dDevice, mCamera));
+
+	// Create the fog constant buffer
+	D3D11_BUFFER_DESC cbDesc;
+	ZeroMemory(&cbDesc, sizeof(cbDesc));
+	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
+	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	cbDesc.ByteWidth = sizeof(CB_FOG_PS);
+	V_RETURN(md3dDevice->CreateBuffer(&cbDesc, NULL, &mFogCB));
+	DX_SetDebugName(mFogCB, "Fog CB");
 
 	// rest of the d3d creation render targets, buffers etc in OnResize that is also executed every time window is resized.
 	OnResize();
@@ -565,13 +597,29 @@ void DeferredShaderApp::Render()
 	md3dImmediateContext->RSSetViewports(num, &oldvp);
 	md3dImmediateContext->RSSetState(pPrevRSState);
 	SAFE_RELEASE(pPrevRSState);
+
 	// Cleanup
 	md3dImmediateContext->VSSetShader(NULL, NULL, 0);
 	md3dImmediateContext->GSSetShader(NULL, NULL, 0);
 	
+	// Prepare the fog parameters
+	D3D11_MAPPED_SUBRESOURCE MappedResource;
+	md3dImmediateContext->Map(mFogCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource);
+	CB_FOG_PS* pCB = (CB_FOG_PS*)MappedResource.pData;
+	pCB->Color = mFogColor;
+	pCB->HighlightColor = mFogHighlightColor;
+	pCB->StartDepth = mFogStartDepth;
+	pCB->GlobalDensity = mFogGlobalDensity;
+	pCB->DirToSun = -mDirLightDir;
+	pCB->HeightFalloff = mFogHeightFalloff;
+	md3dImmediateContext->Unmap(mFogCB, 0);
+	md3dImmediateContext->PSSetConstantBuffers(2, 1, &mFogCB);
+
+	float highlightColorFactor = -Vector3(mCamera->GetLook()).Dot(mDirLightDir) * 1.5f * abs(mTimeOfDay - 0.5f);
+	Vector3 vClearColor = mFogHighlightColor * highlightColorFactor + mFogColor * (1.0f - highlightColorFactor);
 
 	// clear render target view
-	float clearColor[4] = { 0.35, 0.35, 0.72, 0.0 };
+	float clearColor[4] = { vClearColor.x, vClearColor.y, vClearColor.z, 0.0 };
 	md3dImmediateContext->ClearRenderTargetView(mEnablePostFX ? mHDRRTV : mRenderTargetView, clearColor);
 
 	// clear depth stencil view
@@ -916,7 +964,14 @@ void DeferredShaderApp::RenderGUI()
 				ImGui::Checkbox("Enable LightRays", &mEnableSSLR);
 				ImGui::SliderFloat("Intensity", &mSSLRIntensity, 0.1f, mSSLRIntensityMax);
 
-				ImGui::Checkbox("Enable LensFlares", &mEnableLensFlares);				
+				ImGui::Checkbox("Enable LensFlares", &mEnableLensFlares);		
+
+				ImGui::TextWrapped("Fog");
+				ImGui::ColorEdit3("Fog Color", (float*)&mFogColor, ImGuiColorEditFlags_NoLabel);
+				ImGui::ColorEdit3("Fog Highlight Color", (float*)&mFogHighlightColor, ImGuiColorEditFlags_NoLabel);
+				ImGui::SliderFloat("Fog Start", &mFogStartDepth, 0.0f, 200);
+				ImGui::SliderFloat("Fog Density", &mFogGlobalDensity, 0.0f, mMaxFogGlobalDensity);
+				ImGui::SliderFloat("Fog Height Falloff", &mFogHeightFalloff, 0.0f, 5);
 
 			}
 
