@@ -14,6 +14,7 @@ cbuffer cbDirLight : register(b1)
 	float4 ToCascadeOffsetX		: packoffset(c8);
 	float4 ToCascadeOffsetY		: packoffset(c9);
 	float4 ToCascadeScale		: packoffset(c10);
+	bool useFog					: packoffset(c11);
 }
 
 static const float2 arrBasePos[4] =
@@ -172,9 +173,12 @@ float4 DirLightCommonPS(VS_OUTPUT In, bool bUseShadow) : SV_TARGET
 	// Calculate the directional light
     finalColor += CalcDirectional(position, mat, bUseShadow);
 
-	// Apply the fog to the final color
-	float3 eyeToPixel = position - EyePosition;
-	finalColor = ApplyFog(finalColor, EyePosition.y, eyeToPixel);
+	if (useFog)
+	{
+		// Apply the fog to the final color
+		float3 eyeToPixel = position - EyePosition;
+		finalColor = ApplyFog(finalColor, EyePosition.y, eyeToPixel);
+	}
 
 	// Return the final color
     return float4(finalColor, 1.0);

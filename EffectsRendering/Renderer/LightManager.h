@@ -34,12 +34,13 @@ public:
 	}
 
 	// Set the directional light values
-	void SetDirectional(const XMVECTOR& directionalDir, const XMVECTOR& directionalColor, bool castShadow, bool antiFlickerOn)
+	void SetDirectional(const XMVECTOR& directionalDir, const XMVECTOR& directionalColor, bool castShadow, bool antiFlickerOn, bool enableFog)
 	{
 		mDirectionalDir = XMVector3Normalize(directionalDir);
 		mDirectionalColor = directionalColor;
 		mDirCastShadows = castShadow;
 		mCascadedMatrixSet->SetAntiFlicker(antiFlickerOn);
+		mEnableFog = enableFog;
 	}
 
 	// Clear the lights from the previous frame
@@ -265,6 +266,7 @@ private:
 	XMVECTOR mDirectionalDir;
 	XMVECTOR mDirectionalColor;
 	bool mDirCastShadows;
+	bool mEnableFog;
 
 	// Linked list with the active lights
 	std::vector<LIGHT> mArrLights;

@@ -8,9 +8,8 @@
  - DoF
  - Bokeh
  - sunrays
- - volumetric fog?
+ - distance/height fog
  - SSAO
- - SSR
  - Lens flare
 
 */
@@ -26,16 +25,9 @@ IMPLEMENTED
 	- DoF
 	- Bokeh
 	- SSAO - Screen Space Ambient Occlusion
-*/
-
-
-/// TODO
-/*
-	- SSR - Screen Space Reflections
 	- fog - Distance Based Fog
 	- sunray
 	- lens flare
-	- screenshot name timestamp and save to folder
 */
 
 #include "Renderer/D3DRendererApp.h"
@@ -124,6 +116,7 @@ private:
 	bool mVisualizeCascades;
 
 	// Fog constant buffer and settings
+	bool mEnableFog = false;
 	ID3D11Buffer* mFogCB = NULL;
 	Vector3 mFogColor = Vector3(0.5f, 0.5f, 0.5f);
 	Vector3 mFogHighlightColor = Vector3(0.3f, 0.3f, 0.4f);
@@ -507,7 +500,7 @@ void DeferredShaderApp::Update(float dt)
 	mLightManager.SetAmbient(mAmbientLowerColor, mAmbientUpperColor);
 
 	///// sun / directional light
-	mLightManager.SetDirectional(mDirLightDir, mDirLightColor, mDirCastShadows, mAntiFlickerOn);
+	mLightManager.SetDirectional(mDirLightDir, mDirLightColor, mDirCastShadows, mAntiFlickerOn, mEnableFog);
 
 	mCamera->UpdateViewMatrix();
 
@@ -967,6 +960,7 @@ void DeferredShaderApp::RenderGUI()
 				ImGui::Checkbox("Enable LensFlares", &mEnableLensFlares);		
 
 				ImGui::TextWrapped("Fog");
+				ImGui::Checkbox("Enable Fog", &mEnableFog);
 				ImGui::ColorEdit3("Fog Color", (float*)&mFogColor, ImGuiColorEditFlags_NoLabel);
 				ImGui::ColorEdit3("Fog Highlight Color", (float*)&mFogHighlightColor, ImGuiColorEditFlags_NoLabel);
 				ImGui::SliderFloat("Fog Start", &mFogStartDepth, 0.0f, 200);

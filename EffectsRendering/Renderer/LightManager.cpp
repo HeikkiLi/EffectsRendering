@@ -23,6 +23,7 @@ struct CB_DIRECTIONAL
 	float pad4;
 	XMMATRIX ToShadowSpace;
 	XMFLOAT4 ToCascadeSpace[3];
+	int enableFog;
 };
 
 struct CB_POINT_LIGHT_DOMAIN
@@ -851,6 +852,7 @@ void LightManager::DirectionalLight(ID3D11DeviceContext* pd3dImmediateContext)
 		pDirectionalValuesCB->ToCascadeSpace[2] = mCascadedMatrixSet->GetToCascadeScale();
 	}
 
+	pDirectionalValuesCB->enableFog = mEnableFog;
 
 	pd3dImmediateContext->Unmap(mDirLightCB, 0);
 	pd3dImmediateContext->PSSetConstantBuffers(1, 1, &mDirLightCB);
