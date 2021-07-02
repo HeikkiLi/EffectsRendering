@@ -41,7 +41,7 @@ protected:
 
 	void CalcFrameStats();
 
-	HRESULT SnapScreenshot(LPCTSTR szFileName);
+	HRESULT SnapScreenshot(const wchar_t* szFileName);
 
 protected:
 

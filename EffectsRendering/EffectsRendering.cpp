@@ -512,9 +512,19 @@ void DeferredShaderApp::Update(float dt)
 
 	if (GetAsyncKeyState(VK_F4) & 0x01)
 	{
-		// Save backbuffer
-		LPCTSTR screenshotFileName = L"screenshot.jpg";
-		SnapScreenshot(screenshotFileName);
+		// Save backbuffer screenshot
+		time_t t = time(0);
+		struct tm now;
+		localtime_s(&now, &t);
+
+		char buffer[80];
+		strftime(buffer, 80, "%Y-%m-%d_%H%M_%S", &now);
+
+		std::string ssFile = "screenshot_";
+		ssFile.append(buffer);
+		ssFile.append(".jpg");
+		std::wstring wide_string = std::wstring(ssFile.begin(), ssFile.end());
+		SnapScreenshot(wide_string.c_str());
 	}
 
 	if (GetAsyncKeyState(VK_F11) & 0x01)

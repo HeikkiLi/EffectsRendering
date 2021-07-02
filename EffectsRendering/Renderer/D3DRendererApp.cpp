@@ -491,7 +491,7 @@ void D3DRendererApp::CalcFrameStats()
 }
 
 // SnapScreenshot saves a screenshot in jpg format using DirectxTex ScreenGrab.
-HRESULT D3DRendererApp::SnapScreenshot(LPCTSTR szFileName)
+HRESULT D3DRendererApp::SnapScreenshot(const wchar_t* szFileName)
 {
 
 	ID3D11Texture2D* pBackBuffer;
