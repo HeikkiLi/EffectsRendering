@@ -2,14 +2,16 @@
 
 ![EffectsRendering with DX11 .](EffectsRendering/screenshot.jpg)
 
-WIP screenshot
+screenshot demonstrating lens flare, sun rays, fog etc.
+
+This project implemented different post processing effects and rendering features in Directx 11 and HLSL.
 
 ## Features:
 - HDR 
 - bloom 
 - bokeh
 - dof
-- ssr
+- distance/height fog
 - ssao
 - sun rays
 - lens flare 
@@ -29,3 +31,5 @@ Mouse:
 - RMB Rotate camera look 
 
 
+Screenshot showing different PostFX settings in ImGui.
+![EffectsRendering with DX11 .](EffectsRendering/screenshot_2021-07-02_2044_42.jpg)

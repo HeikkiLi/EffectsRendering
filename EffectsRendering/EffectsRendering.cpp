@@ -2,22 +2,7 @@
 // EffectsRendering
 //
 /*
- - HDR
- - Adaptation
- - Bloom
- - DoF
- - Bokeh
- - sunrays
- - distance/height fog
- - SSAO
- - Lens flare
-
-*/
-//
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/*
-IMPLEMENTED
+Implemented features
 	- diffuse texture
 	- normal maps,  normal texture
 	- HDR, tonemapping and adaptation
