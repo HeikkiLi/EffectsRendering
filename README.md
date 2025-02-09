@@ -1,5 +1,8 @@
 # EffectsRendering
 
+![EffectsRendering with DX11 Sponza with Bloom .](EffectsRendering/screenshot_2025-02-09_2014_06.jpg)
+Sponza with bloom effect.
+
 ![EffectsRendering with DX11 .](EffectsRendering/screenshot.jpg)
 
 screenshot demonstrating lens flare, sun rays, fog etc.
