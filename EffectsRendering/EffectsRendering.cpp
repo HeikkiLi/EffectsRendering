@@ -259,8 +259,8 @@ bool DeferredShaderApp::Init()
 {
 	mCamera = new Camera();
 
-	mClientWidth = 1024;
-	mClientHeight = 768;
+	mClientWidth = 1980;
+	mClientHeight = 1080;
 
 	if (!D3DRendererApp::Init())
 		return false;
@@ -486,7 +486,6 @@ void DeferredShaderApp::Update(float dt)
 
 	///// sun / directional light
 	mLightManager.SetDirectional(mDirLightDir, mDirLightColor, mDirCastShadows, mAntiFlickerOn, mEnableFog);
-
 	mCamera->UpdateViewMatrix();
 
 	if (GetAsyncKeyState(VK_F2) & 0x01)

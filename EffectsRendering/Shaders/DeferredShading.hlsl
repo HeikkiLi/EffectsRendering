@@ -87,25 +87,27 @@ PS_GBUFFER_OUT PackGBuffer(float3 BaseColor, float3 Normal, float SpecIntensity,
 
 PS_GBUFFER_OUT RenderScenePS(VS_OUTPUT In)
 {
-    // Lookup mesh texture and modulate it with diffuse
-	float3 DiffuseColor = diffuseColor.xyz;
-	if (useDiffuseTexture)
-	{
-		DiffuseColor = DiffuseTexture.Sample(LinearSampler, In.UV);
-	}
-    
-	DiffuseColor *= DiffuseColor;
-
-    float3 normal = normalize( In.Normal );
-
-    if (useNormalMapTexture)
+    // Sample diffuse texture
+    float3 DiffuseColor = diffuseColor.xyz;
+    if (useDiffuseTexture)
     {
-        // TODO get normal from normal map
-        float3 normalMapSample = NormalMapTexture.Sample(LinearSampler, In.UV);
-       // normal = normalize(normalMapSample * 2.0 - 1.0);
-
-        normal = NormalSampleToWorldSpace(normalMapSample, normal, In.TangentW);
+        DiffuseColor *= DiffuseTexture.Sample(LinearSampler, In.UV).rgb;
     }
 
+    // Default normal is from vertex (world space)
+    float3 normal = normalize(In.Normal);
+
+    // Apply normal mapping if available
+    if (useNormalMapTexture)
+    {
+        // Sample normal map
+        float3 normalMapSample = NormalMapTexture.Sample(LinearSampler, In.UV).rgb;
+
+        // Convert the normal map from tangent space to world space
+        normal = NormalSampleToWorldSpace(normalMapSample, In.Normal, In.TangentW);
+        normal *= 0.5; // Reduce intensity
+    }
+
+    // Pack and return GBuffer data
     return PackGBuffer(DiffuseColor, normal, specIntensity, specExp);
 }

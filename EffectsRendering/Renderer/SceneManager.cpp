@@ -42,65 +42,20 @@ bool SceneManager::Init(ID3D11Device* device, Camera* camera)
 
 	mMeshes.clear();
 
-	// Load the models
+	// Load the scene model
 	
 	MeshData pillarMData;
-	if (!ObjLoader::Instance()->LoadToMesh("..\\Assets\\pillar.obj", "..\\Assets\\", pillarMData))
+	if (!ObjLoader::Instance()->LoadToMesh("..\\Assets\\crytek_sponza\\sponza.obj", "..\\Assets\\crytek_sponza\\", pillarMData))
 		return false;
-
-	Material m_pillar;
-	m_pillar.diffuseTexture = "..\\Assets\\factory_brick_1k\\factory_brick_diff_1k.jpg";
-	TextureManager::Instance()->CreateTexture(m_pillar.diffuseTexture);
-
-	//m_pillar.normalTexture = "..\\Assets\\factory_brick_1k\\factory_brick_nor_1k.jpg";
-	//TextureManager::Instance()->CreateTexture(m_pillar.normalTexture);
-
-	m_pillar.Diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-	m_pillar.specExp = 10.0f;
-	m_pillar.specIntensivity = 2.0f;
-	pillarMData.materials[0] = m_pillar;
-
-	for (int i = 0; i < 5; i++)
-	{
-		for (int j = 0; j < 6; j++)
-		{
-			Mesh* pillarMesh = new Mesh();
-			pillarMesh->Create(device, pillarMData);
-			XMMATRIX matTranslate = XMMatrixTranslation(-10.0f + j*5.0f, 0.0f, 10.0f + i * 5.0f);
-			XMMATRIX matScale = XMMatrixScaling(0.1f, 0.1f, 0.1f);
-			XMMATRIX matRot = XMMatrixRotationY(M_PI);
-			pillarMesh->mWorld = matScale * matRot * matTranslate;
-			mMeshes.push_back(pillarMesh);
-		}
-	}
 	
-
-	// plane
-	MeshData planeData;
-	GeometryGenerator::Instance()->CreateGrid(80.0, 80.0, 20.0, 20.0, planeData);
-
-	Material m_plane;
-	
-	m_plane.diffuseTexture = "..\\Assets\\floor_tiles_08_1k\\floor_tiles_08_diff_1k.jpg";
-	TextureManager::Instance()->CreateTexture(m_plane.diffuseTexture);
-	
-	m_plane.normalTexture = "..\\Assets\\floor_tiles_08_1k\\floor_tiles_08_nor_1k.jpg";
-	TextureManager::Instance()->CreateTexture(m_plane.normalTexture);
-
-	m_plane.Diffuse = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-	m_plane.specExp = 10.0f;
-	m_plane.specIntensivity = 2.0f;
-	planeData.materials[0] = m_plane;
-
-	Mesh* plane = new Mesh();
-	plane->Create(device, planeData);
+	Mesh* sponza = new Mesh();
+	sponza->Create(device, pillarMData);
 	XMMATRIX matTranslate = XMMatrixTranslation(0.0f, 0.0f, 10.0f);
-	XMMATRIX matScale = XMMatrixScaling(1.0f, 1.0f, 1.0f);
+	XMMATRIX matScale = XMMatrixScaling(0.1f, 0.1f, 0.1f);
 	XMMATRIX matRot = XMMatrixIdentity();
-	plane->mWorld = matScale * matRot * matTranslate;
-	mMeshes.push_back(plane);
+	sponza->mWorld = matScale * matRot * matTranslate;
+	mMeshes.push_back(sponza);
 
-	
 		
 	// Create constant buffers
 	D3D11_BUFFER_DESC cbDesc;
@@ -196,76 +151,170 @@ void SceneManager::Release()
 }
 
 
-// Renders the scene to GBuffer
+// Renders the scene to GBuffer with per-face material handling
 void SceneManager::Render(ID3D11DeviceContext* pd3dImmediateContext)
 {
-	// Get the projection & view matrix from the camera class	
+	// Get the projection & view matrices from the camera.
 	XMMATRIX mView = mCamera->View();
 	XMMATRIX mProj = mCamera->Proj();
 
-	// Render the meshes
+	// Loop over each mesh in the scene.
 	for (int i = 0; i < mMeshes.size(); ++i)
 	{
-		// mesh world matrix
-		XMMATRIX mWorld = mMeshes[i]->mWorld;
+		Mesh* pMesh = mMeshes[i];
+		XMMATRIX mWorld = pMesh->mWorld;
 		XMMATRIX mWorldViewProjection = mWorld * mView * mProj;
 
-		// Set the constant buffers
+		// Update the Vertex Shader Constant Buffer (per object)
 		HRESULT hr;
 		D3D11_MAPPED_SUBRESOURCE MappedResource;
-		HR(pd3dImmediateContext->Map(mSceneVertexShaderCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource));
-		CB_VS_PER_OBJECT* pVSPerObject = (CB_VS_PER_OBJECT*)MappedResource.pData;
-		pVSPerObject->mWorldViewProjection = XMMatrixTranspose(mWorldViewProjection);
-		pVSPerObject->mWorld = XMMatrixTranspose(mWorld);
-		pd3dImmediateContext->Unmap(mSceneVertexShaderCB, 0);
-		pd3dImmediateContext->VSSetConstantBuffers(0, 1, &mSceneVertexShaderCB);
-
-		HR(pd3dImmediateContext->Map(mScenePixelShaderCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource));
-		CB_PS_PER_OBJECT* pPSPerObject = (CB_PS_PER_OBJECT*)MappedResource.pData;
-		//pPSPerObject->mEyePosition = mCamera->GetPosition();
-		// set per object properties
-		pPSPerObject->mSpecExp = mMeshes[i]->mMaterials[0].specExp;
-		pPSPerObject->mSpecIntensity = mMeshes[i]->mMaterials[0].specIntensivity;
-		pPSPerObject->mdiffuseColor = mMeshes[i]->mMaterials[0].Diffuse;
-		
-		if (TextureManager::Instance()->GetTexture(mMeshes[i]->mMaterials[0].diffuseTexture) != NULL)
+		hr = pd3dImmediateContext->Map(mSceneVertexShaderCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource);
+		if (SUCCEEDED(hr))
 		{
-			ID3D11ShaderResourceView* srv = TextureManager::Instance()->GetTexture(mMeshes[i]->mMaterials[0].diffuseTexture);
-			pd3dImmediateContext->PSSetShaderResources(0, 1, &srv);
-			pPSPerObject->mUseDiffuseTexture = true;
-		}
-		else {
-			pPSPerObject->mUseDiffuseTexture = false;		
-		}
-
-		if (TextureManager::Instance()->GetTexture(mMeshes[i]->mMaterials[0].normalTexture) != NULL)
-		{
-			ID3D11ShaderResourceView* srv = TextureManager::Instance()->GetTexture(mMeshes[i]->mMaterials[0].normalTexture);
-			pd3dImmediateContext->PSSetShaderResources(1, 1, &srv);
-			//pPSPerObject->mUseNormalMapTexture = true;
-			pPSPerObject->mUseNormalMapTexture = g_useNormalMap;
-		}
-		else {
-			pPSPerObject->mUseNormalMapTexture = false;
+			CB_VS_PER_OBJECT* pVSPerObject = (CB_VS_PER_OBJECT*)MappedResource.pData;
+			pVSPerObject->mWorldViewProjection = XMMatrixTranspose(mWorldViewProjection);
+			pVSPerObject->mWorld = XMMatrixTranspose(mWorld);
+			pd3dImmediateContext->Unmap(mSceneVertexShaderCB, 0);
+			pd3dImmediateContext->VSSetConstantBuffers(0, 1, &mSceneVertexShaderCB);
 		}
 
-
-		pd3dImmediateContext->Unmap(mScenePixelShaderCB, 0);
-		pd3dImmediateContext->PSSetConstantBuffers(0, 1, &mScenePixelShaderCB);
-
-		// Set the vertex layout
+		// Set the shaders and input layout
 		pd3dImmediateContext->IASetInputLayout(mSceneVSLayout);
+		pd3dImmediateContext->VSSetShader(mSceneVertexShader, nullptr, 0);
+		pd3dImmediateContext->PSSetShader(mScenePixelShader, nullptr, 0);
 
-		// Set the shaders
-		pd3dImmediateContext->VSSetShader(mSceneVertexShader, NULL, 0);
-		pd3dImmediateContext->PSSetShader(mScenePixelShader, NULL, 0);
+		// Bind the vertex and index buffers
+		UINT stride = sizeof(Vertex);
+		UINT offset = 0;
+		pd3dImmediateContext->IASetVertexBuffers(0, 1, &pMesh->mVB, &stride, &offset);
+		pd3dImmediateContext->IASetIndexBuffer(pMesh->mIB, DXGI_FORMAT_R32_UINT, 0);
+		pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		// render
-		mMeshes[i]->Render(pd3dImmediateContext);
-	}
+		// If no per-face material information is present, render the whole mesh with material 0.
+		if (pMesh->mMaterialIndices.empty())
+		{
+			// Update pixel shader constant buffer with material 0.
+			if (pMesh->mMaterials.find(0) != pMesh->mMaterials.end())
+			{
+				Material& mat = pMesh->mMaterials[0];
+				hr = pd3dImmediateContext->Map(mScenePixelShaderCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource);
+				if (SUCCEEDED(hr))
+				{
+					CB_PS_PER_OBJECT* pPSPerObject = (CB_PS_PER_OBJECT*)MappedResource.pData;
+					pPSPerObject->mSpecExp = mat.specExp;
+					pPSPerObject->mSpecIntensity = mat.specIntensivity;
+					pPSPerObject->mdiffuseColor = mat.Diffuse;
 
+					// Set diffuse texture if available.
+					if (!mat.diffuseTexture.empty() &&
+						TextureManager::Instance()->GetTexture(mat.diffuseTexture) != nullptr)
+					{
+						ID3D11ShaderResourceView* srv = TextureManager::Instance()->GetTexture(mat.diffuseTexture);
+						pd3dImmediateContext->PSSetShaderResources(0, 1, &srv);
+						pPSPerObject->mUseDiffuseTexture = true;
+					}
+					else
+					{
+						pPSPerObject->mUseDiffuseTexture = false;
+					}
 
+					// Set normal texture if available.
+					if (!mat.normalTexture.empty() &&
+						TextureManager::Instance()->GetTexture(mat.normalTexture) != nullptr)
+					{
+						ID3D11ShaderResourceView* srv = TextureManager::Instance()->GetTexture(mat.normalTexture);
+						pd3dImmediateContext->PSSetShaderResources(1, 1, &srv);
+						pPSPerObject->mUseNormalMapTexture = g_useNormalMap;
+					}
+					else
+					{
+						pPSPerObject->mUseNormalMapTexture = false;
+					}
+
+					pd3dImmediateContext->Unmap(mScenePixelShaderCB, 0);
+					pd3dImmediateContext->PSSetConstantBuffers(0, 1, &mScenePixelShaderCB);
+				}
+			}
+			// Draw the entire mesh.
+			pd3dImmediateContext->DrawIndexed(pMesh->mIndexCount, 0, 0);
+		}
+		else
+		{
+			// Render the mesh by grouping faces that share the same material
+			// Assume that each face is a triangle (3 indices) and that the number of faces is:
+			UINT numFaces = static_cast<UINT>(pMesh->mMaterialIndices.size());
+			// Group contiguous faces with the same material.
+			UINT groupStartFace = 0;
+			UINT currentMaterial = pMesh->mMaterialIndices[0];
+
+			for (UINT face = 1; face <= numFaces; face++)
+			{
+				bool endOfGroup = (face == numFaces) ||
+					(pMesh->mMaterialIndices[face] != currentMaterial);
+				if (endOfGroup)
+				{
+					// Number of faces in this group:
+					UINT faceCountInGroup = face - groupStartFace;
+					// Calculate starting index in the index buffer.
+					UINT indexStart = groupStartFace * 3; // 3 indices per face.
+					UINT indexCount = faceCountInGroup * 3;
+
+					// Update Pixel Shader Constant Buffer with current material
+					if (pMesh->mMaterials.find(currentMaterial) != pMesh->mMaterials.end())
+					{
+						Material& mat = pMesh->mMaterials[currentMaterial];
+						hr = pd3dImmediateContext->Map(mScenePixelShaderCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &MappedResource);
+						if (SUCCEEDED(hr))
+						{
+							CB_PS_PER_OBJECT* pPSPerObject = (CB_PS_PER_OBJECT*)MappedResource.pData;
+							pPSPerObject->mSpecExp = mat.specExp;
+							pPSPerObject->mSpecIntensity = mat.specIntensivity;
+							pPSPerObject->mdiffuseColor = mat.Diffuse;
+
+							if (!mat.diffuseTexture.empty() &&
+								TextureManager::Instance()->GetTexture(mat.diffuseTexture) != nullptr)
+							{
+								ID3D11ShaderResourceView* srv = TextureManager::Instance()->GetTexture(mat.diffuseTexture);
+								pd3dImmediateContext->PSSetShaderResources(0, 1, &srv);
+								pPSPerObject->mUseDiffuseTexture = true;
+							}
+							else
+							{
+								pPSPerObject->mUseDiffuseTexture = false;
+							}
+
+							if (!mat.normalTexture.empty() &&
+								TextureManager::Instance()->GetTexture(mat.normalTexture) != nullptr)
+							{
+								ID3D11ShaderResourceView* srv = TextureManager::Instance()->GetTexture(mat.normalTexture);
+								pd3dImmediateContext->PSSetShaderResources(1, 1, &srv);
+								pPSPerObject->mUseNormalMapTexture = g_useNormalMap;
+							}
+							else
+							{
+								pPSPerObject->mUseNormalMapTexture = false;
+							}
+
+							pd3dImmediateContext->Unmap(mScenePixelShaderCB, 0);
+							pd3dImmediateContext->PSSetConstantBuffers(0, 1, &mScenePixelShaderCB);
+						}
+					}
+
+					// Draw the subset (group) of faces
+					pd3dImmediateContext->DrawIndexed(indexCount, indexStart, 0);
+
+					// If not done, start a new group.
+					if (face < numFaces)
+					{
+						currentMaterial = pMesh->mMaterialIndices[face];
+						groupStartFace = face;
+					}
+				}
+			}
+		} // end if per-face material available
+	} // end for each mesh
 }
+
 
 void SceneManager::RenderSceneNoShaders(ID3D11DeviceContext * pd3dImmediateContext)
 {

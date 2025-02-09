@@ -45,6 +45,7 @@ struct MeshData
 	std::vector<Vertex> Vertices;
 	std::vector<UINT> Indices;
 	std::map<UINT, Material> materials;
+	std::vector<UINT> FaceMaterials;  // Stores material indices per face
 	XMMATRIX world;
 };
 
@@ -56,7 +57,6 @@ public:
 
 	// Reads data from Param meshData and creates vertex,Index buffers, Material info.
 	void Create(ID3D11Device* device, MeshData meshData);
-
 
 	void Render(ID3D11DeviceContext* pd3dDeviceContext);
 	

@@ -44,7 +44,13 @@ public:
 	}
 
 	// Clear the lights from the previous frame
-	void ClearLights() { mArrLights.clear();  mLastShadowLight = -1; mNextFreeSpotShadowmap = -1; mNextFreePointShadowmap = -1; }
+	void ClearLights() 
+	{ 
+	//	mArrLights.clear();  
+		mLastShadowLight = -1; 
+		mNextFreeSpotShadowmap = -1; 
+		mNextFreePointShadowmap = -1; 
+	}
 
 	// Add a single point light
 	void AddPointLight(const XMFLOAT3& pointPosition, float pointRange, const XMFLOAT3& pointColor, bool bCastShadow)

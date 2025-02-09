@@ -17,6 +17,9 @@ void Mesh::Create(ID3D11Device* device, MeshData meshData)
 	mIndexCount = meshData.Indices.size();
 	mVertexCount = meshData.Vertices.size();
 
+	// Store face material indices
+	mMaterialIndices = meshData.FaceMaterials;
+
 	D3D11_BUFFER_DESC vbd;
 	vbd.Usage = D3D11_USAGE_IMMUTABLE;
 	vbd.ByteWidth = sizeof(Vertex)*meshData.Vertices.size();
