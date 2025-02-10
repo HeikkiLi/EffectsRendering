@@ -35,6 +35,7 @@ struct Material
 	XMFLOAT4 Diffuse;
 	std::string diffuseTexture;
 	std::string normalTexture;
+	std::string bumpMapTexture;
 	float specExp;
 	float specIntensivity;
 

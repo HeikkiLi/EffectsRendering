@@ -31,6 +31,7 @@ Implemented features
 enum RENDER_STATE { BACKBUFFERRT, DEPTHRT, COLSPECRT, NORMALRT, SPECPOWRT };
 
 bool g_useNormalMap = true;
+bool g_useBumpMap = false;
 
 class DeferredShaderApp : public D3DRendererApp
 {
@@ -914,7 +915,8 @@ void DeferredShaderApp::RenderGUI()
 			if (ImGui::CollapsingHeader("Post Effects", ImGuiTreeNodeFlags_DefaultOpen))
 			{
 
-				ImGui::Checkbox("Use NormalMap", &g_useNormalMap);
+				ImGui::Checkbox("Use Normal Map", &g_useNormalMap);
+				ImGui::Checkbox("Use Bump Map", &g_useBumpMap);
 
 				ImGui::Checkbox("Enable Post Effects", &mEnablePostFX);
 

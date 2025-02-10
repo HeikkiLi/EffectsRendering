@@ -60,6 +60,11 @@ bool ObjLoader::LoadToMesh(std::string fileName, std::string mtlBaseDir, MeshDat
             TextureManager::Instance()->CreateTexture(mat.normalTexture);
         }
 
+        if (!m.bump_texname.empty()) {
+            mat.bumpMapTexture = mtlBaseDir + m.bump_texname;
+            TextureManager::Instance()->CreateTexture(mat.bumpMapTexture);
+        }
+
         mat.Diffuse = XMFLOAT4(m.diffuse[0], m.diffuse[1], m.diffuse[2], 1.0f);
         mat.specExp = m.shininess;
         mat.specIntensivity = 0.25f;

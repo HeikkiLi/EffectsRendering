@@ -7,6 +7,7 @@
 #include <iostream>
 
 extern bool g_useNormalMap;
+extern bool g_useBumpMap;
 
 #pragma pack(push,1)
 struct CB_VS_PER_OBJECT
@@ -22,6 +23,8 @@ struct CB_PS_PER_OBJECT
 	float mSpecIntensity;
 	int mUseDiffuseTexture;
 	int mUseNormalMapTexture;
+	int mUseBumpMapTexture;
+	float padding[3]; // Ensure 16-byte alignment
 };
 #pragma pack(pop)
 
@@ -46,7 +49,14 @@ bool SceneManager::Init(ID3D11Device* device, Camera* camera)
 	
 	MeshData pillarMData;
 	if (!ObjLoader::Instance()->LoadToMesh("..\\Assets\\crytek_sponza\\sponza.obj", "..\\Assets\\crytek_sponza\\", pillarMData))
+	{
 		return false;
+	}
+
+	 //if (!ObjLoader::Instance()->LoadToMesh("..\\Assets\\sponza\\sponza.obj", "..\\Assets\\sponza\\", pillarMData))
+	 //{
+	 //	return false;
+	 //}
 	
 	Mesh* sponza = new Mesh();
 	sponza->Create(device, pillarMData);
@@ -231,6 +241,19 @@ void SceneManager::Render(ID3D11DeviceContext* pd3dImmediateContext)
 						pPSPerObject->mUseNormalMapTexture = false;
 					}
 
+					// Set bum map texture if available.
+					if (!mat.bumpMapTexture.empty() &&
+						TextureManager::Instance()->GetTexture(mat.bumpMapTexture) != nullptr)
+					{
+						ID3D11ShaderResourceView* srv = TextureManager::Instance()->GetTexture(mat.bumpMapTexture);
+						pd3dImmediateContext->PSSetShaderResources(2, 1, &srv);
+						pPSPerObject->mUseBumpMapTexture = g_useBumpMap;
+					}
+					else
+					{
+						pPSPerObject->mUseBumpMapTexture = false;
+					}
+
 					pd3dImmediateContext->Unmap(mScenePixelShaderCB, 0);
 					pd3dImmediateContext->PSSetConstantBuffers(0, 1, &mScenePixelShaderCB);
 				}
@@ -295,8 +318,21 @@ void SceneManager::Render(ID3D11DeviceContext* pd3dImmediateContext)
 								pPSPerObject->mUseNormalMapTexture = false;
 							}
 
+							// Set bum map texture if available.
+							if (!mat.bumpMapTexture.empty() &&
+								TextureManager::Instance()->GetTexture(mat.bumpMapTexture) != nullptr)
+							{
+								ID3D11ShaderResourceView* srv = TextureManager::Instance()->GetTexture(mat.bumpMapTexture);
+								pd3dImmediateContext->PSSetShaderResources(2, 1, &srv);
+								pPSPerObject->mUseBumpMapTexture = g_useBumpMap;
+							}
+							else
+							{
+								pPSPerObject->mUseBumpMapTexture = false;
+							}
+
 							pd3dImmediateContext->Unmap(mScenePixelShaderCB, 0);
-							pd3dImmediateContext->PSSetConstantBuffers(0, 1, &mScenePixelShaderCB);
+							pd3dImmediateContext->PSSetConstantBuffers(1, 1, &mScenePixelShaderCB);
 						}
 					}
 
