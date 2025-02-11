@@ -1,23 +1,29 @@
 # EffectsRendering
 
 ![EffectsRendering with DX11 Sponza with Bloom .](EffectsRendering/screenshot_2025-02-09_2014_06.jpg)
-Sponza with bloom effect.
+Sponza scene with bloom effect.
+
+This project showcases various post-processing effects and rendering techniques implemented in DirectX 11 and HLSL.
+
+🎥 Video Showcase
+Check out the YouTube video demonstrating effects like bloom, light rays, and lens flare, along with a debug render view of deferred shading buffers:
+[▶ Watch on YouTube](https://youtu.be/tpAFA-Ydh0k)
+
 
 ![EffectsRendering with DX11 .](EffectsRendering/screenshot.jpg)
 
-screenshot demonstrating lens flare, sun rays, fog etc.
-
-This project implemented different post processing effects and rendering features in Directx 11 and HLSL.
+Scene featuring lens flare, sun rays, fog, and more.
 
 ## Features:
-- HDR 
-- bloom 
-- bokeh
-- dof
-- distance/height fog
-- ssao
-- sun rays
-- lens flare 
+This renderer includes a variety of post-processing effects:
+
+- HDR Rendering
+- Bloom
+- Bokeh Depth of Field (DoF)
+- Screen-Space Ambient Occlusion (SSAO)
+- Distance & Height-Based Fog
+- Sun Rays (God Rays)
+- Lens Flare
 
 ## Controls:
 
@@ -34,5 +40,5 @@ Mouse:
 - RMB Rotate camera look 
 
 
-Screenshot showing different PostFX settings in ImGui.
+Below is a screenshot showing the PostFX settings in ImGui:
 ![EffectsRendering with DX11 .](EffectsRendering/screenshot_2021-07-02_2044_42.jpg)
