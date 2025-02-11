@@ -5,8 +5,7 @@ Sponza scene with bloom effect.
 
 This project showcases various post-processing effects and rendering techniques implemented in DirectX 11 and HLSL.
 
-🎥 Video Showcase
-Check out the YouTube video demonstrating effects like bloom, light rays, and lens flare, along with a debug render view of deferred shading buffers:
+🎥 YouTube video demonstrating effects like bloom, light rays, and lens flare, along with a debug render view of deferred shading buffers:
 [▶ Watch on YouTube](https://youtu.be/tpAFA-Ydh0k)
 
 
